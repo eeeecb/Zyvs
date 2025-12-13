@@ -82,77 +82,70 @@ zyva/
 
 ## 🚀 Como Rodar Localmente
 
+### ✅ PROJETO JÁ ESTÁ RODANDO!
+
+Se você está lendo isso após ter executado os passos de setup, seu projeto já está funcionando:
+
+- **Backend**: http://localhost:3001
+- **Frontend**: http://localhost:3000
+- **PostgreSQL**: localhost:5432
+- **Redis**: localhost:6379
+
+### 🧪 Testar Agora
+
+1. **Acesse**: http://localhost:3000
+2. **Clique em**: "Criar Conta Grátis"
+3. **Preencha** o formulário
+4. **Veja** o dashboard funcionando!
+
+---
+
+### 📋 Setup Completo (se ainda não rodou)
+
 ### Pré-requisitos
 
-- Node.js 20+ (LTS)
-- Docker e Docker Compose
+- ✅ Node.js 20+ (você tem v24.11.1)
+- ✅ Docker e Docker Compose (você tem v28.3.2)
 - Git
 
-### Passo 1: Clonar o repositório
+### Passo 1: O Docker já está rodando! ✅
 
 ```bash
-git clone https://github.com/seu-usuario/zyva.git
-cd zyva
-```
-
-### Passo 2: Subir banco de dados (Docker)
-
-```bash
-# Iniciar PostgreSQL e Redis
-docker-compose up -d
-
 # Verificar se estão rodando
 docker-compose ps
 ```
 
-**Acesso aos containers**:
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+Você deve ver:
+- ✅ zyva-postgres (healthy)
+- ✅ zyva-redis (healthy)
 
-### Passo 3: Configurar Backend
+### Passo 2: Backend já está configurado! ✅
 
 ```bash
 cd backend
-
-# Instalar dependências
-npm install
-
-# Configurar variáveis de ambiente
-cp .env.example .env
-# Editar .env com suas credenciais
-
-# Rodar migrations do Prisma
-npx prisma migrate dev
-
-# Gerar Prisma Client
-npx prisma generate
-
-# (Opcional) Seed de dados iniciais
-npx prisma db seed
-
-# Iniciar servidor de desenvolvimento
-npm run dev
+# Já tem:
+# - ✅ Dependências instaladas
+# - ✅ Prisma configurado
+# - ✅ Migrations rodadas
+# - ✅ Servidor rodando em http://localhost:3001
 ```
 
-Backend rodando em: `http://localhost:3001`
+**Testar backend**:
+```bash
+curl http://localhost:3001/health
+```
 
-### Passo 4: Configurar Frontend
+### Passo 3: Frontend já está rodando! ✅
 
 ```bash
 cd frontend
-
-# Instalar dependências
-npm install
-
-# Configurar variáveis de ambiente
-cp .env.example .env.local
-# Editar .env.local
-
-# Iniciar servidor de desenvolvimento
-npm run dev
+# Já tem:
+# - ✅ Dependências instaladas
+# - ✅ Next.js configurado
+# - ✅ Servidor rodando em http://localhost:3000
 ```
 
-Frontend rodando em: `http://localhost:3000`
+**Acesse**: http://localhost:3000
 
 ---
 
@@ -400,14 +393,20 @@ Desenvolvido com 💜 por [Seu Nome]
 
 ## 🎯 Roadmap
 
-### ✅ MVP (v1.0)
-- [x] Autenticação
-- [x] CRUD de Contatos
-- [x] Kanban
-- [x] Flow Builder
-- [x] WhatsApp + Email
-- [x] Campanhas
-- [x] Aniversários
+### ✅ FASE 0 e 1 - COMPLETAS!
+- [x] Setup do projeto (Backend + Frontend)
+- [x] Docker (PostgreSQL + Redis) funcionando
+- [x] Autenticação JWT completa (Backend)
+- [x] Páginas de Login e Cadastro (Frontend)
+- [x] Dashboard básico (Frontend)
+- [x] Integração Frontend + Backend funcionando
+- [ ] CRUD de Contatos (FASE 2 - Próxima)
+- [ ] Kanban (FASE 3)
+- [ ] Flow Builder (FASE 4)
+- [ ] WhatsApp + Email (FASE 5)
+- [ ] Campanhas (FASE 6)
+- [ ] Aniversários (FASE 7)
+- [ ] Deploy (FASE 8)
 
 ### 🚧 Próximas Features (v1.1)
 - [ ] Templates de flows prontos

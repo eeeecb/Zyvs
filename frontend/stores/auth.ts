@@ -1,0 +1,69 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'LOJA';
+  plan?: string;
+  organizationId?: string;
+  organization?: {
+    id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    maxContacts: number;
+    maxFlows: number;
+    maxMessagesPerMonth: number;
+  };
+}
+
+interface AuthStore {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  setAuth: (user: User, token: string) => void;
+  logout: () => void;
+  updateUser: (user: Partial<User>) => void;
+}
+
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+
+      setAuth: (user, token) => {
+        set({ user, token, isAuthenticated: true });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zyva-token', token);
+          localStorage.setItem('zyva-user', JSON.stringify(user));
+        }
+      },
+
+      logout: () => {
+        set({ user: null, token: null, isAuthenticated: false });
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('zyva-token');
+          localStorage.removeItem('zyva-user');
+        }
+      },
+
+      updateUser: (userData) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          const updatedUser = { ...currentUser, ...userData };
+          set({ user: updatedUser });
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('zyva-user', JSON.stringify(updatedUser));
+          }
+        }
+      },
+    }),
+    {
+      name: 'zyva-auth-storage',
+    }
+  )
+);
