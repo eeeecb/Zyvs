@@ -77,8 +77,39 @@ export class AdminService {
         where,
         skip,
         take: limit,
-        include: {
-          organization: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          role: true,
+          plan: true,
+          planExpiry: true,
+          messagesUsedThisMonth: true,
+          flowExecutionsThisMonth: true,
+          stripeCustomerId: true,
+          stripeSubscriptionId: true,
+          stripeCurrentPeriodEnd: true,
+          onboardingCompleted: true,
+          createdAt: true,
+          updatedAt: true,
+          lastLoginAt: true,
+          organizationId: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              plan: true,
+            },
+          },
+          _count: {
+            select: {
+              createdFlows: true,
+              createdCampaigns: true,
+              auditLogs: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -114,11 +145,18 @@ export class AdminService {
               id: true,
               name: true,
               email: true,
+              plan: true,
+              stripeSubscriptionId: true,
             },
           },
           _count: {
             select: {
               members: true,
+              contacts: true,
+              flows: true,
+              campaigns: true,
+              messages: true,
+              integrations: true,
             },
           },
         },
@@ -211,9 +249,6 @@ export class AdminService {
   async getUserById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        organization: true,
-      },
       select: {
         id: true,
         name: true,
@@ -221,10 +256,25 @@ export class AdminService {
         avatar: true,
         role: true,
         plan: true,
+        planExpiry: true,
+        messagesUsedThisMonth: true,
+        flowExecutionsThisMonth: true,
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        stripeCurrentPeriodEnd: true,
+        onboardingCompleted: true,
         organizationId: true,
-        organization: true,
         createdAt: true,
+        updatedAt: true,
         lastLoginAt: true,
+        organization: true,
+        _count: {
+          select: {
+            createdFlows: true,
+            createdCampaigns: true,
+            auditLogs: true,
+          },
+        },
       },
     });
 
@@ -233,5 +283,111 @@ export class AdminService {
     }
 
     return user;
+  }
+
+  /**
+   * Atualizar role de um usuário (promover/rebaixar)
+   */
+  async updateUserRole(userId: string, newRole: 'ADMIN' | 'LOJA') {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { role: newRole },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return user;
+  }
+
+  /**
+   * Resetar senha de um usuário
+   */
+  async resetUserPassword(userId: string, newPassword: string) {
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Lista logs de auditoria
+   */
+  async listAuditLogs(
+    page = 1,
+    limit = 20,
+    filters?: {
+      userId?: string;
+      action?: string;
+      tableName?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters?.action) {
+      where.action = filters.action;
+    }
+
+    if (filters?.tableName) {
+      where.tableName = filters.tableName;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) {
+        where.createdAt.gte = filters.startDate;
+      }
+      if (filters.endDate) {
+        where.createdAt.lte = filters.endDate;
+      }
+    }
+
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      logs,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }

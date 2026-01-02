@@ -9,7 +9,13 @@ import {
   TrendingUp,
   Activity,
   Zap,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  TrendingDown,
+  Crown,
+  Shield,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -22,6 +28,23 @@ interface Stats {
   activeCampaigns: number;
 }
 
+interface RecentUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'LOJA';
+  createdAt: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  currentContacts: number;
+  maxContacts: number;
+  messagesThisMonth: number;
+  maxMessagesPerMonth: number;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -32,17 +55,33 @@ export default function AdminDashboard() {
     activeCampaigns: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [orgsNearLimit, setOrgsNearLimit] = useState<Organization[]>([]);
 
   useEffect(() => {
-    loadStats();
+    loadDashboardData();
   }, []);
 
-  const loadStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      const response = await api.get('/api/admin/stats');
-      setStats(response.data);
+      const [statsRes, usersRes, orgsRes] = await Promise.all([
+        api.get('/api/admin/stats'),
+        api.get('/api/admin/users', { params: { page: 1, limit: 5 } }),
+        api.get('/api/admin/organizations', { params: { page: 1, limit: 100 } }),
+      ]);
+
+      setStats(statsRes.data);
+      setRecentUsers(usersRes.data.users);
+
+      // Filtrar organizações perto do limite (>80%)
+      const nearLimit = orgsRes.data.organizations.filter((org: Organization) => {
+        const contactsPercentage = (org.currentContacts / org.maxContacts) * 100;
+        const messagesPercentage = (org.messagesThisMonth / org.maxMessagesPerMonth) * 100;
+        return contactsPercentage > 80 || messagesPercentage > 80;
+      });
+      setOrgsNearLimit(nearLimit);
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -138,19 +177,88 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white border-2 border-black p-6">
-        <h2 className="text-2xl font-bold text-black mb-6">
-          Atividades Recentes
-        </h2>
-        <div className="space-y-3">
-          <div className="flex items-center gap-4 p-4 bg-gray-50">
-            <div className="w-3 h-3 bg-[#00ff88] rounded-full"></div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-black">Sistema operando normalmente</p>
-              <p className="text-xs text-gray-600">Todos os serviços ativos</p>
+      {/* Alerts */}
+      {orgsNearLimit.length > 0 && (
+        <div className="bg-yellow-50 border-2 border-[#ffeb3b] p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-black flex-shrink-0" strokeWidth={2} />
+            <div>
+              <h2 className="text-xl font-bold text-black mb-1">
+                Organizações Próximas do Limite
+              </h2>
+              <p className="text-sm text-gray-700">
+                {orgsNearLimit.length} {orgsNearLimit.length === 1 ? 'organização está' : 'organizações estão'} usando mais de 80% dos recursos
+              </p>
             </div>
           </div>
+          <div className="space-y-2">
+            {orgsNearLimit.slice(0, 3).map((org) => {
+              const contactsPercentage = Math.round((org.currentContacts / org.maxContacts) * 100);
+              const messagesPercentage = Math.round((org.messagesThisMonth / org.maxMessagesPerMonth) * 100);
+
+              return (
+                <div key={org.id} className="bg-white border-2 border-black p-3">
+                  <p className="font-bold text-sm text-black mb-2">{org.name}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {contactsPercentage > 80 && (
+                      <div className="text-gray-700">
+                        Contatos: <span className="font-bold text-black">{contactsPercentage}%</span>
+                      </div>
+                    )}
+                    {messagesPercentage > 80 && (
+                      <div className="text-gray-700">
+                        Mensagens: <span className="font-bold text-black">{messagesPercentage}%</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Users */}
+      <div className="bg-white border-2 border-black p-6">
+        <h2 className="text-2xl font-bold text-black mb-6">
+          Usuários Recentes
+        </h2>
+        <div className="space-y-3">
+          {recentUsers.length > 0 ? (
+            recentUsers.map((user) => {
+              const RoleIcon = user.role === 'ADMIN' ? Crown : Shield;
+              const roleColor = user.role === 'ADMIN' ? '#ff3366' : '#00ff88';
+
+              return (
+                <div key={user.id} className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-200">
+                  <div
+                    className="w-10 h-10 flex items-center justify-center text-white font-bold text-lg"
+                    style={{ backgroundColor: roleColor }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-black">{user.name}</p>
+                      <RoleIcon className="w-3 h-3" style={{ color: roleColor }} strokeWidth={2} />
+                    </div>
+                    <p className="text-xs text-gray-600">{user.email}</p>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex items-center gap-4 p-4 bg-gray-50">
+              <CheckCircle2 className="w-5 h-5 text-[#00ff88]" strokeWidth={2} />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-black">Sistema operando normalmente</p>
+                <p className="text-xs text-gray-600">Nenhum usuário novo hoje</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

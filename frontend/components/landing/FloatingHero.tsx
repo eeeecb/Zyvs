@@ -124,15 +124,7 @@ export default function FloatingHero() {
               <div className="text-4xl font-extrabold">98.7%</div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-[#ff3366] text-white p-6 brutal-border brutal-shadow rotate-1"
-            >
-              <div className="text-sm font-bold uppercase mb-1">Economia/Mês</div>
-              <div className="text-3xl font-extrabold">142h</div>
-            </motion.div>
+           
           </div>
         </div>
 

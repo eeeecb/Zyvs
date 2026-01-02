@@ -3,8 +3,11 @@ import {
   getStats,
   listUsers,
   getUserById,
+  updateUserRole,
+  resetUserPassword,
   listOrganizations,
   getOrganizationById,
+  listAuditLogs,
 } from './admin.controller';
 import { requireAdmin } from '../../middlewares/auth.middleware';
 
@@ -18,8 +21,13 @@ export async function adminRoutes(fastify: FastifyInstance) {
   // Usuários
   fastify.get('/users', listUsers);
   fastify.get('/users/:id', getUserById);
+  fastify.patch('/users/:id/role', updateUserRole);
+  fastify.post('/users/:id/reset-password', resetUserPassword);
 
   // Organizações
   fastify.get('/organizations', listOrganizations);
   fastify.get('/organizations/:id', getOrganizationById);
+
+  // Logs de auditoria
+  fastify.get('/logs', listAuditLogs);
 }

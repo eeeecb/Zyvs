@@ -103,3 +103,106 @@ export async function getOrganizationById(
     });
   }
 }
+
+/**
+ * PATCH /api/admin/users/:id/role
+ * Atualizar role do usuário
+ */
+export async function updateUserRole(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = req.params as { id: string };
+    const { role } = req.body as { role: 'ADMIN' | 'LOJA' };
+
+    if (!role || !['ADMIN', 'LOJA'].includes(role)) {
+      return reply.status(400).send({
+        error: 'Role inválida',
+        message: 'Role deve ser ADMIN ou LOJA',
+      });
+    }
+
+    const user = await adminService.updateUserRole(id, role);
+    return reply.send(user);
+  } catch (error: any) {
+    return reply.status(500).send({
+      error: 'Erro ao atualizar role',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * POST /api/admin/users/:id/reset-password
+ * Resetar senha do usuário
+ */
+export async function resetUserPassword(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = req.params as { id: string };
+    const { newPassword } = req.body as { newPassword: string };
+
+    if (!newPassword || newPassword.length < 6) {
+      return reply.status(400).send({
+        error: 'Senha inválida',
+        message: 'Senha deve ter pelo menos 6 caracteres',
+      });
+    }
+
+    await adminService.resetUserPassword(id, newPassword);
+    return reply.send({
+      success: true,
+      message: 'Senha resetada com sucesso',
+    });
+  } catch (error: any) {
+    return reply.status(500).send({
+      error: 'Erro ao resetar senha',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * GET /api/admin/logs
+ * Lista logs de auditoria
+ */
+export async function listAuditLogs(
+  req: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      userId,
+      action,
+      tableName,
+      startDate,
+      endDate,
+    } = req.query as any;
+
+    const filters: any = {};
+
+    if (userId) filters.userId = userId;
+    if (action) filters.action = action;
+    if (tableName) filters.tableName = tableName;
+    if (startDate) filters.startDate = new Date(startDate);
+    if (endDate) filters.endDate = new Date(endDate);
+
+    const result = await adminService.listAuditLogs(
+      Number(page),
+      Number(limit),
+      filters
+    );
+
+    return reply.send(result);
+  } catch (error: any) {
+    return reply.status(500).send({
+      error: 'Erro ao listar logs',
+      message: error.message,
+    });
+  }
+}
