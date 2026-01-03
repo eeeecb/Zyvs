@@ -1,0 +1,6 @@
+nome,email,telefone,empresa,cargo,cidade,estado,tags,observacoes
+João Silva,joao.silva@example.com,11999999999,Empresa X,CEO,São Paulo,SP,"vip,cliente",Cliente importante com alto potencial
+Maria Santos,maria.santos@example.com,11988888888,Empresa Y,Gerente de Marketing,Rio de Janeiro,RJ,"lead,prospect",Contato feito no evento Tech Summit 2025
+Pedro Oliveira,pedro@example.com,21977777777,Tech Solutions,Desenvolvedor,Belo Horizonte,MG,"desenvolvedor,tech",Interessado em parcerias tecnológicas
+Ana Costa,,11966666666,Comércio ABC,Proprietária,Curitiba,PR,"loja,varejo",Sem email cadastrado
+,carlos@example.com,,Freelancer,Consultor,Porto Alegre,RS,"consultor",Apenas com email de contato

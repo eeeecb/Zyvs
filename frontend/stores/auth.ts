@@ -16,6 +16,9 @@ interface User {
     maxContacts: number;
     maxFlows: number;
     maxMessagesPerMonth: number;
+    currentContacts: number;
+    currentFlows: number;
+    currentMessagesThisMonth: number;
   };
 }
 

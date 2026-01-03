@@ -31,7 +31,7 @@ export default function DashboardPage() {
     },
     {
       name: 'Mensagens',
-      value: user?.organization?.messagesThisMonth || 0,
+      value: user?.organization?.currentMessagesThisMonth || 0,
       max: user?.organization?.maxMessagesPerMonth || 500,
       icon: MessageSquare,
       color: '#ffeb3b',

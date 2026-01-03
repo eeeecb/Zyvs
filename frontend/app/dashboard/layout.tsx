@@ -20,15 +20,15 @@ import { useState, useEffect } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Clientes', href: '/clientes', icon: Users },
-  { name: 'Automações', href: '/automacoes', icon: Zap },
-  { name: 'Pipeline', href: '/pipeline', icon: Columns3 },
-  { name: 'Campanhas', href: '/campanhas', icon: MessageSquare },
+  { name: 'Clientes', href: '/dashboard/clientes', icon: Users },
+  { name: 'Automações', href: '/dashboard/automacoes', icon: Zap },
+  { name: 'Pipeline', href: '/dashboard/pipeline', icon: Columns3 },
+  { name: 'Campanhas', href: '/dashboard/campanhas', icon: MessageSquare },
 ];
 
 const settingsItem = {
   name: 'Configurações',
-  href: '/configuracoes',
+  href: '/dashboard/configuracoes',
   icon: Settings,
 };
 

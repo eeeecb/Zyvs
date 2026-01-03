@@ -3,9 +3,12 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { billingRoutes } from './modules/billing/billing.routes';
+import { contactsRoutes } from './modules/contacts/contacts.routes';
+import { contactImportWorker } from './jobs/workers/contact-import.worker';
 
 const fastify = Fastify({
   logger: process.env.NODE_ENV === 'development',
@@ -29,6 +32,13 @@ fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'fallback-secret-change-in-production',
 });
 
+// Multipart para upload de arquivos
+fastify.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+});
+
 // Declarar tipos customizados para TypeScript
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -44,6 +54,7 @@ declare module '@fastify/jwt' {
 fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(adminRoutes, { prefix: '/api/admin' });
 fastify.register(billingRoutes, { prefix: '/api/billing' });
+fastify.register(contactsRoutes, { prefix: '/api/contacts' });
 
 // Health check
 fastify.get('/health', async () => {
@@ -75,11 +86,12 @@ const start = async () => {
     console.log(`
 ╔═══════════════════════════════════════╗
 ║                                       ║
-║   🚀 Thumdra API Server               ║
+║   🚀 Zyva API Server                  ║
 ║                                       ║
 ║   Server:  http://localhost:${port}      ║
 ║   Health:  http://localhost:${port}/health ║
 ║   Env:     ${process.env.NODE_ENV}              ║
+║   Worker:  ✅ Contact Import Worker   ║
 ║                                       ║
 ╚═══════════════════════════════════════╝
     `);
@@ -92,6 +104,10 @@ const start = async () => {
 // Graceful shutdown
 const closeGracefully = async (signal: string) => {
   console.log(`\nReceived signal ${signal}, closing server gracefully...`);
+
+  // Fechar worker BullMQ
+  await contactImportWorker.close();
+
   await fastify.close();
   process.exit(0);
 };
