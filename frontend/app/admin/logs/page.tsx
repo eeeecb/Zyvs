@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
   ChevronLeft,
   ChevronRight,
   Filter,
-  Calendar,
-  User,
   Shield,
   Crown,
   Plus,
@@ -28,8 +26,8 @@ interface AuditLog {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'IMPORT';
   tableName: string;
   recordId?: string;
-  oldData?: any;
-  newData?: any;
+  oldData?: Record<string, unknown>;
+  newData?: Record<string, unknown>;
   changedFields?: string[];
   ipAddress?: string;
   userAgent?: string;
@@ -80,14 +78,10 @@ export default function AdminLogsPage() {
     endDate: '',
   });
 
-  useEffect(() => {
-    loadLogs();
-  }, [pagination.page, filters]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.page,
         limit: pagination.limit,
       };
@@ -106,7 +100,11 @@ export default function AdminLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, filters]);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('pt-BR', {

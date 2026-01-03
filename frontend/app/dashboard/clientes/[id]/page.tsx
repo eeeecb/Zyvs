@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -74,12 +74,7 @@ export default function ContactDetailsPage() {
     notes: '',
   });
 
-  useEffect(() => {
-    loadContact();
-    loadTags();
-  }, [contactId]);
-
-  async function loadContact() {
+  const loadContact = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/contacts/${contactId}`);
@@ -95,19 +90,24 @@ export default function ContactDetailsPage() {
         state: data.customFields?.state || '',
         notes: data.notes || '',
       });
-    } catch (error) {
+    } catch {
       toast.error('Contato não encontrado');
       router.push('/dashboard/clientes');
     } finally {
       setLoading(false);
     }
-  }
+  }, [contactId, router]);
+
+  useEffect(() => {
+    loadContact();
+    loadTags();
+  }, [loadContact]);
 
   async function loadTags() {
     try {
       const response = await api.get('/api/tags');
       setAllTags(response.data.tags || []);
-    } catch (error) {
+    } catch {
       // Tags não carregadas, ok
     }
   }
@@ -123,8 +123,9 @@ export default function ContactDetailsPage() {
       await api.put(`/api/contacts/${contactId}`, formData);
       toast.success('Contato atualizado com sucesso');
       loadContact();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao salvar contato');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Erro ao salvar contato');
     } finally {
       setSaving(false);
     }
@@ -138,7 +139,7 @@ export default function ContactDetailsPage() {
       await api.delete(`/api/contacts/${contactId}`);
       toast.success('Contato deletado com sucesso');
       router.push('/dashboard/clientes');
-    } catch (error) {
+    } catch {
       toast.error('Erro ao deletar contato');
       setDeleting(false);
     }
@@ -150,8 +151,9 @@ export default function ContactDetailsPage() {
       toast.success('Tag adicionada');
       loadContact();
       setShowTagSelector(false);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao adicionar tag');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Erro ao adicionar tag');
     }
   }
 
@@ -160,7 +162,7 @@ export default function ContactDetailsPage() {
       await api.delete(`/api/contacts/${contactId}/tags/${tagId}`);
       toast.success('Tag removida');
       loadContact();
-    } catch (error) {
+    } catch {
       toast.error('Erro ao remover tag');
     }
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
@@ -37,7 +37,7 @@ interface Contact {
     position?: string;
     city?: string;
     state?: string;
-    [key: string]: any;
+    [key: string]: string | undefined;
   };
   tags: Array<{
     id: string;
@@ -70,22 +70,7 @@ export default function ContactsPage() {
     notes: '',
   });
 
-  useEffect(() => {
-    loadContacts();
-  }, [page, search]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  async function loadContacts() {
+  const loadContacts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/contacts', {
@@ -99,7 +84,22 @@ export default function ContactsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [page, search]);
+
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   async function handleDelete(id: string) {
     if (!confirm('Tem certeza que deseja deletar este contato?')) return;
@@ -108,7 +108,7 @@ export default function ContactsPage() {
       await api.delete(`/api/contacts/${id}`);
       toast.success('Contato deletado com sucesso');
       loadContacts();
-    } catch (error) {
+    } catch {
       toast.error('Erro ao deletar contato');
     }
   }
@@ -137,8 +137,11 @@ export default function ContactsPage() {
       });
       toast.success('Contato criado com sucesso');
       loadContacts();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao salvar contato');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast.error(errorMessage || 'Erro ao salvar contato');
     } finally {
       setSaving(false);
     }
@@ -166,7 +169,7 @@ export default function ContactsPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Contatos exportados com sucesso!');
-    } catch (error) {
+    } catch {
       toast.error('Erro ao exportar contatos');
     }
   }

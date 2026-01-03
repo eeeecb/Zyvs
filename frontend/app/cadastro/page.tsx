@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PasswordStrength, { isPasswordStrong } from '@/components/auth/PasswordStrength';
-import { ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle2, Check } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
 
 const registerSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
@@ -79,7 +79,8 @@ export default function CadastroPage() {
       setError('');
       setIsLoading(true);
 
-      const { confirmPassword, ...registerData } = data;
+      const { confirmPassword: _, ...registerData } = data;
+      void _; // Explicitly ignore the unused variable
       const response = await api.post('/api/auth/register', registerData);
       const { user, token, checkoutUrl } = response.data;
 
@@ -92,8 +93,13 @@ export default function CadastroPage() {
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao criar conta');
+    } catch (err: unknown) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } } };
+        setError(axiosError.response?.data?.error || 'Erro ao criar conta');
+      } else {
+        setError('Erro ao criar conta');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -267,9 +273,9 @@ export default function CadastroPage() {
                       value={plan.value}
                       checked={selectedPlan === plan.value}
                       onChange={(e) => {
-                        setSelectedPlan(e.target.value);
-                        setValue('plan', e.target.value as any);
-                      }}
+                          setSelectedPlan(e.target.value);
+                          setValue('plan', e.target.value as 'TESTE_A' | 'TESTE_B' | 'TESTE_C');
+                        }}
                       className="sr-only"
                     />
                     <div

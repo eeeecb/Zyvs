@@ -39,11 +39,13 @@ interface ImportResult {
   }>;
 }
 
+type PreviewRow = Record<string, string | number | boolean | null | undefined>;
+
 export default function ImportContactsPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<any[]>([]);
+  const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [rowCount, setRowCount] = useState(0);
   const [config, setConfig] = useState<ImportConfig>({
@@ -52,7 +54,7 @@ export default function ImportContactsPage() {
     createTags: true,
     columnMapping: {},
   });
-  const [processing, setProcessing] = useState(false);
+  const [, setProcessing] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
@@ -83,12 +85,18 @@ export default function ImportContactsPage() {
 
       setConfig({ ...config, columnMapping: autoMapping });
       setStep('config');
-    } catch (error) {
+    } catch {
       toast.error('Erro ao ler arquivo. Verifique o formato.');
     }
   }
 
-  async function parseFilePreview(file: File): Promise<any> {
+  interface ParseResult {
+    columns: string[];
+    rows: PreviewRow[];
+    total: number;
+  }
+
+  async function parseFilePreview(file: File): Promise<ParseResult> {
     return new Promise((resolve, reject) => {
       if (file.name.endsWith('.csv')) {
         Papa.parse(file, {
@@ -97,7 +105,7 @@ export default function ImportContactsPage() {
           complete: (results) => {
             resolve({
               columns: results.meta.fields || [],
-              rows: results.data.slice(0, 5),
+              rows: results.data.slice(0, 5) as PreviewRow[],
               total: results.data.length,
             });
           },
@@ -110,7 +118,7 @@ export default function ImportContactsPage() {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet) as Record<string, any>[];
+            const json = XLSX.utils.sheet_to_json(sheet) as PreviewRow[];
 
             const columns = json.length > 0 ? Object.keys(json[0]) : [];
             resolve({
@@ -156,14 +164,17 @@ export default function ImportContactsPage() {
         // Assíncrono
         setJobId(response.data.jobId);
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao importar');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error 
+        ? (error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || error.message
+        : 'Erro ao importar';
+      toast.error(errorMessage);
       setProcessing(false);
       setStep('config');
     }
   }
 
-  function handleImportComplete(importResult: any) {
+  function handleImportComplete(importResult: ImportResult) {
     setResult(importResult);
     setStep('result');
     setProcessing(false);
@@ -297,7 +308,11 @@ export default function ImportContactsPage() {
               {/* Column Mapper */}
               <ColumnMapper
                 headers={columns}
-                previewData={preview}
+                previewData={preview.map(row => 
+                  Object.fromEntries(
+                    Object.entries(row).map(([key, value]) => [key, String(value ?? '')])
+                  )
+                )}
                 columnMapping={config.columnMapping}
                 onMappingChange={(mapping) => setConfig({ ...config, columnMapping: mapping })}
               />

@@ -44,8 +44,13 @@ export default function LoginPage() {
 
       // Sempre redirecionar para o dashboard normal
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao fazer login');
+    } catch (err: unknown) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } } };
+        setError(axiosError.response?.data?.error || 'Erro ao fazer login');
+      } else {
+        setError('Erro ao fazer login');
+      }
     } finally {
       setIsLoading(false);
     }

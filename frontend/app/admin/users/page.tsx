@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -77,23 +77,7 @@ export default function AdminUsersPage() {
     totalPages: 1,
   });
 
-  useEffect(() => {
-    loadUsers();
-  }, [pagination.page]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.page === 1) {
-        loadUsers();
-      } else {
-        setPagination({ ...pagination, page: 1 });
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/admin/users', {
@@ -111,7 +95,23 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, search]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pagination.page === 1) {
+        loadUsers();
+      } else {
+        setPagination((prev) => ({ ...prev, page: 1 }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search, pagination.page, loadUsers]);
 
   const handleUpdateRole = async (userId: string, newRole: 'ADMIN' | 'LOJA') => {
     if (!confirm(`Tem certeza que deseja ${newRole === 'ADMIN' ? 'promover' : 'rebaixar'} este usuário?`)) {
@@ -124,8 +124,9 @@ export default function AdminUsersPage() {
       toast.success('Role atualizada com sucesso!');
       loadUsers();
       setSelectedUser(null);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao atualizar role');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Erro ao atualizar role');
     } finally {
       setActionLoading(false);
     }
@@ -146,8 +147,9 @@ export default function AdminUsersPage() {
       toast.success('Senha resetada com sucesso!');
       setShowResetPassword(false);
       setNewPassword('');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao resetar senha');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Erro ao resetar senha');
     } finally {
       setActionLoading(false);
     }

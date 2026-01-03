@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -12,8 +12,6 @@ import {
   Calendar,
   Zap,
   MessageSquare,
-  Activity,
-  TrendingUp,
   CheckCircle2,
   XCircle,
   Plug,
@@ -73,11 +71,7 @@ export default function AdminOrganizationsPage() {
     totalPages: 1,
   });
 
-  useEffect(() => {
-    loadOrganizations();
-  }, [pagination.page]);
-
-  const loadOrganizations = async () => {
+  const loadOrganizations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/admin/organizations', {
@@ -94,7 +88,11 @@ export default function AdminOrganizationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    loadOrganizations();
+  }, [loadOrganizations]);
 
   const getPlanColor = (plan: string) => {
     if (plan === 'FREE') return '#94a3b8';
