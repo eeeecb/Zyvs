@@ -7,10 +7,8 @@ import { ImportResult } from '../../modules/contacts/contacts.schema';
 const BATCH_SIZE = 100;
 const validator = new ImportValidator();
 
-// Configuração do Redis
-const connection = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
+// Configuração do Redis - usando REDIS_URL
+const connection = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 
@@ -53,7 +51,8 @@ export const contactImportWorker = new Worker(
                   where: { id: existing.id },
                   data: {
                     name: validatedData.name || existing.name,
-                    phone: validatedData.phone || existing.phone,                  },
+                    phone: validatedData.phone || existing.phone,
+                  },
                 });
                 result.success++;
               } else {
@@ -151,7 +150,7 @@ export const contactImportWorker = new Worker(
   },
   {
     connection,
-    concurrency: 2, // Processar 2 jobs em paralelo
+    concurrency: 2,
   }
 );
 

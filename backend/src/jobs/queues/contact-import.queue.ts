@@ -1,10 +1,8 @@
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
-// Configuração do Redis
-const connection = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
+// Configuração do Redis - usando REDIS_URL
+const connection = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 
@@ -17,11 +15,11 @@ export const contactImportQueue = new Queue('contact-import', {
       delay: 5000,
     },
     removeOnComplete: {
-      age: 3600, // Manter por 1 hora após completar
+      age: 3600,
       count: 100,
     },
     removeOnFail: {
-      age: 86400, // Manter por 24h se falhar
+      age: 86400,
     },
   },
 });
