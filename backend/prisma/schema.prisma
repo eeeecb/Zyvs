@@ -57,6 +57,20 @@ model User {
   stripeSubscriptionId  String?   @unique
   stripeCurrentPeriodEnd DateTime?
 
+  // Settings - Preferências de usuário
+  locale        String?   @default("pt-BR")
+  timezone      String?   @default("America/Sao_Paulo")
+  dateFormat    String?   @default("DD/MM/YYYY")
+  phone         String?
+
+  // Settings - Notificações (JSON)
+  emailNotifications    Json?     @default("{\"newContacts\":true,\"automationsCompleted\":true,\"campaignsSent\":true,\"integrationErrors\":true,\"systemUpdates\":true,\"weeklyDigest\":true}")
+  whatsappNotifications Json?     @default("{\"criticalAlerts\":true,\"taskReminders\":false}")
+
+  // Settings - Privacidade e Segurança
+  twoFactorEnabled      Boolean   @default(false)
+  twoFactorSecret       String?
+
   // Timestamps
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -74,6 +88,10 @@ model User {
   // Relações de criação
   createdFlows     Flow[]
   createdCampaigns Campaign[]
+
+  // Relações de configurações
+  sessions              Session[]
+  dataExportRequests    DataExportRequest[]
 
   @@index([email])
   @@index([role])
@@ -618,4 +636,65 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([tableName, recordId])
   @@map("audit_logs")
+}
+
+// =====================================================
+// SESSÕES (AUTENTICAÇÃO E SEGURANÇA)
+// =====================================================
+
+model Session {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Token JWT
+  token         String   @unique
+
+  // Informações do dispositivo e localização
+  device        String?  // "Windows • Chrome"
+  location      String?  // "São Paulo, BR"
+  ipAddress     String?
+
+  // Timestamps
+  lastActivity  DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+// =====================================================
+// EXPORTAÇÃO DE DADOS (LGPD/GDPR)
+// =====================================================
+
+enum DataExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DataExportRequest {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Status da exportação
+  status      DataExportStatus @default(PENDING)
+
+  // URL do arquivo gerado (S3, local, etc)
+  downloadUrl String?
+  expiresAt   DateTime?
+
+  // Error tracking
+  errorMessage String?         @db.Text
+
+  // Timestamps
+  createdAt   DateTime         @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("data_export_requests")
 }
