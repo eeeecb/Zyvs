@@ -20,6 +20,14 @@ interface User {
     currentFlows: number;
     currentMessagesThisMonth: number;
   };
+  // Settings fields
+  locale?: string;
+  timezone?: string;
+  dateFormat?: string;
+  phone?: string;
+  emailNotifications?: any;
+  whatsappNotifications?: any;
+  twoFactorEnabled?: boolean;
 }
 
 interface AuthStore {
@@ -27,6 +35,7 @@ interface AuthStore {
   token: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
+  setUser: (user: User) => void;
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
 }
@@ -42,6 +51,13 @@ export const useAuthStore = create<AuthStore>()(
         set({ user, token, isAuthenticated: true });
         if (typeof window !== 'undefined') {
           localStorage.setItem('thumdra-token', token);
+          localStorage.setItem('thumdra-user', JSON.stringify(user));
+        }
+      },
+
+      setUser: (user) => {
+        set({ user });
+        if (typeof window !== 'undefined') {
           localStorage.setItem('thumdra-user', JSON.stringify(user));
         }
       },

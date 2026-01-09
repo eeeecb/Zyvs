@@ -10,6 +10,7 @@ import { adminRoutes } from './modules/admin/admin.routes';
 import { billingRoutes } from './modules/billing/billing.routes';
 import { contactsRoutes } from './modules/contacts/contacts.routes';
 import { tagsRoutes, contactTagsRoutes } from './modules/tags/tags.routes';
+import { settingsRoutes } from './modules/settings/settings.routes';
 // import { contactImportWorker } from './jobs/workers/contact-import.worker';
 
 const fastify = Fastify({
@@ -106,6 +107,7 @@ fastify.register(billingRoutes, { prefix: '/api/billing' });
 fastify.register(contactsRoutes, { prefix: '/api/contacts' });
 fastify.register(tagsRoutes, { prefix: '/api/tags' });
 fastify.register(contactTagsRoutes, { prefix: '/api/contacts' });
+fastify.register(settingsRoutes, { prefix: '/api/settings' });
 
 // Health check
 fastify.get('/health', async () => {
