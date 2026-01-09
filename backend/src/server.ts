@@ -16,6 +16,23 @@ const fastify = Fastify({
   logger: process.env.NODE_ENV === 'development',
 });
 
+// Configurar content type parser para preservar raw body nos webhooks
+fastify.addContentTypeParser(
+  'application/json',
+  { parseAs: 'buffer' },
+  async (req: any, body: Buffer) => {
+    // Preservar raw body para validação de assinatura do Stripe
+    req.rawBody = body;
+
+    // Fazer parse normal do JSON
+    try {
+      return JSON.parse(body.toString('utf-8'));
+    } catch (err) {
+      throw new Error('Invalid JSON');
+    }
+  }
+);
+
 // Plugins
 fastify.register(cors, {
   origin: process.env.NODE_ENV === 'production'

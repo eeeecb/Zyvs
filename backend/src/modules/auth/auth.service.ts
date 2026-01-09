@@ -19,24 +19,24 @@ export class AuthService {
 
     // 3. Criar usuário e organização em uma transação
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Criar usuário
+      // Criar usuário com plano FREE (upgrade via Stripe checkout)
       const user = await tx.user.create({
         data: {
           name: data.name,
           email: data.email,
           password: hashedPassword,
           role: 'LOJA',
-          plan: data.plan,
+          plan: 'FREE', // Começa com FREE, upgrade via checkout
         },
       });
 
-      // Criar organização
+      // Criar organização com plano FREE
       const organization = await tx.organization.create({
         data: {
           name: `${data.name}'s Organization`,
           slug: data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-'),
           ownerId: user.id,
-          plan: data.plan,
+          plan: 'FREE', // Começa com FREE, upgrade via checkout
         },
       });
 
