@@ -34,6 +34,7 @@ interface AuthStore {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  _hasHydrated: boolean;
   setAuth: (user: User, token: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      _hasHydrated: false,
 
       setAuth: (user, token) => {
         set({ user, token, isAuthenticated: true });
@@ -83,6 +85,11 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'thumdra-auth-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state._hasHydrated = true;
+        }
+      },
     }
   )
 );

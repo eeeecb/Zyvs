@@ -1,36 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 
 export function useRequireAdmin() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isAuthenticated, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
-    // Aguardar o Zustand carregar do localStorage
-    const timer = setTimeout(() => {
-      setIsLoading(false);
+    // Only check after hydration is complete
+    if (!_hasHydrated) return;
 
-      if (!isAuthenticated) {
-        router.push('/login');
-        return;
-      }
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
 
-      if (user?.role !== 'ADMIN') {
-        router.push('/dashboard');
-        return;
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, user, router]);
+    if (user?.role !== 'ADMIN') {
+      router.push('/dashboard');
+      return;
+    }
+  }, [_hasHydrated, isAuthenticated, user, router]);
 
   return {
     user,
     isAdmin: user?.role === 'ADMIN',
-    isLoading
+    isLoading: !_hasHydrated
   };
 }
