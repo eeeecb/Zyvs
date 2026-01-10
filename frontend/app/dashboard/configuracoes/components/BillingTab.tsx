@@ -91,7 +91,7 @@ export function BillingTab() {
       await api.post('/api/billing/cancel');
       await loadSubscription();
       toast.success('Assinatura cancelada com sucesso');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao cancelar:', error);
       toast.error('Erro ao cancelar assinatura');
     } finally {

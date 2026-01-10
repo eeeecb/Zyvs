@@ -10,14 +10,35 @@ import {
   Zap,
   ArrowRight,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const [realContactsCount, setRealContactsCount] = useState<number>(0);
+
+  // Buscar contagem real de contatos
+  useEffect(() => {
+    const fetchContactsCount = async () => {
+      try {
+        const response = await api.get('/api/contacts', {
+          params: { page: 1, limit: 1 },
+        });
+        setRealContactsCount(response.data.pagination.total);
+      } catch (error) {
+        console.error('Erro ao buscar contagem de contatos:', error);
+      }
+    };
+
+    if (user?.organizationId) {
+      fetchContactsCount();
+    }
+  }, [user?.organizationId]);
 
   const stats = [
     {
       name: 'Contatos',
-      value: user?.organization?.currentContacts || 0,
+      value: realContactsCount,
       max: user?.organization?.maxContacts || 100,
       icon: Users,
       color: '#00ff88',
@@ -44,24 +65,27 @@ export default function DashboardPage() {
     },
   ];
 
+  const hasContacts = realContactsCount > 0;
+
   const quickActions = [
     {
       icon: Users,
-      title: 'Adicionar Contatos',
+      title: hasContacts ? 'Contatos' : 'Adicionar Contatos',
       description: 'Importe ou adicione manualmente',
-      href: '/clientes/novo',
+      href: '/dashboard/clientes',
+      ctaText: hasContacts ? 'Ir para contatos' : 'Adicionar agora',
     },
     {
       icon: Zap,
       title: 'Criar Automação',
       description: 'Configure fluxos inteligentes',
-      href: '/automacoes/novo',
+      href: '/dashboard/automacoes',
     },
     {
       icon: MessageSquare,
       title: 'Nova Campanha',
       description: 'Envie mensagens em massa',
-      href: '/campanhas/nova/mensagem',
+      href: '/dashboard/campanhas',
     },
   ];
 
@@ -148,7 +172,7 @@ export default function DashboardPage() {
                   {action.description}
                 </p>
                 <span className="text-sm font-bold text-black group-hover:text-[#00ff88] transition flex items-center gap-2">
-                  Em breve
+                  {action.ctaText || 'Em breve'}
                   <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
                 </span>
               </motion.div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/lib/api';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -52,7 +53,7 @@ export function ProfileTab() {
         confirmPassword: '',
       });
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error('✗ Erro ao alterar senha', {
         description: error.response?.data?.message || 'Tente novamente',
         className: 'bg-[#ff3366] text-white border-2 border-black font-bold',

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/lib/api';
 import { SettingsCard } from './SettingsCard';
+import Image from 'next/image';
 import {
   Shield,
   Monitor,
@@ -14,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AxiosError } from 'axios';
 
 interface Session {
   id: string;
@@ -48,7 +50,7 @@ export function PrivacyTab() {
       setShowQRCode(true);
       toast.success('Escaneie o QR Code com seu aplicativo autenticador');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Erro ao ativar 2FA');
     },
   });
@@ -64,7 +66,7 @@ export function PrivacyTab() {
       // Refresh user data
       window.location.reload();
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Token inválido');
     },
   });
@@ -77,7 +79,7 @@ export function PrivacyTab() {
       toast.success('2FA desativado com sucesso');
       window.location.reload();
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Erro ao desativar 2FA');
     },
   });
@@ -101,7 +103,7 @@ export function PrivacyTab() {
     onSuccess: (response) => {
       toast.success(response.data.message);
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Erro ao solicitar exportação');
     },
   });
@@ -194,10 +196,13 @@ export function PrivacyTab() {
                 </p>
                 <div className="bg-white p-4 border-2 border-black">
                   {qrCodeUrl && (
-                    <img
+                    <Image
                       src={qrCodeUrl}
                       alt="QR Code"
+                      width={200}
+                      height={200}
                       className="w-full h-auto"
+                      unoptimized
                     />
                   )}
                 </div>
