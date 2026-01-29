@@ -5,7 +5,7 @@ import {
   Cake,
   Clock,
   MessageSquare,
-  Mail,
+  Send,
   Phone,
   Loader2,
   Save,
@@ -20,7 +20,7 @@ interface BirthdayConfig {
   id: string;
   isEnabled: boolean;
   template: string;
-  channel: 'WHATSAPP' | 'EMAIL' | 'SMS';
+  channel: 'WHATSAPP' | 'TELEGRAM' | 'SMS';
   sendAtHour: number;
   totalSent: number;
   lastSentAt: string | null;
@@ -36,9 +36,9 @@ interface UpcomingBirthday {
 }
 
 const channelOptions = [
-  { value: 'WHATSAPP', label: 'WhatsApp', icon: MessageSquare },
-  { value: 'EMAIL', label: 'Email', icon: Mail },
-  { value: 'SMS', label: 'SMS', icon: Phone },
+  { value: 'WHATSAPP', label: 'WhatsApp', icon: MessageSquare, enabled: true },
+  { value: 'TELEGRAM', label: 'Telegram', icon: Send, enabled: false, tooltip: 'Em breve' },
+  { value: 'SMS', label: 'SMS', icon: Phone, enabled: false, tooltip: 'Indisponível no momento' },
 ];
 
 const hourOptions = Array.from({ length: 24 }, (_, i) => ({
@@ -186,22 +186,32 @@ export function BirthdayTab() {
               {channelOptions.map((option) => {
                 const Icon = option.icon;
                 const isSelected = config.channel === option.value;
+                const isDisabled = !option.enabled;
 
                 return (
-                  <button
-                    key={option.value}
-                    onClick={() =>
-                      setConfig({ ...config, channel: option.value as BirthdayConfig['channel'] })
-                    }
-                    className={`flex items-center gap-2 px-4 py-2.5 border-2 font-semibold text-sm transition ${
-                      isSelected
-                        ? 'border-[#00ff88] bg-[#00ff88]/10 text-black'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {option.label}
-                  </button>
+                  <div key={option.value} className="relative group">
+                    <button
+                      onClick={() =>
+                        option.enabled && setConfig({ ...config, channel: option.value as BirthdayConfig['channel'] })
+                      }
+                      disabled={isDisabled}
+                      className={`flex items-center gap-2 px-4 py-2.5 border-2 font-semibold text-sm transition ${
+                        isDisabled
+                          ? 'border-gray-200 text-gray-400 opacity-50 cursor-not-allowed'
+                          : isSelected
+                          ? 'border-[#00ff88] bg-[#00ff88]/10 text-black'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {option.label}
+                    </button>
+                    {isDisabled && option.tooltip && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        {option.tooltip}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

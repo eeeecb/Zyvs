@@ -25,14 +25,14 @@ export const delayConfigSchema = z.object({
 
 // Message configuration (permissive for draft, validated on activation)
 export const messageConfigSchema = z.object({
-  channel: z.enum(['WHATSAPP', 'EMAIL', 'SMS']),
+  channel: z.enum(['WHATSAPP', 'TELEGRAM', 'SMS']),
   content: z.string(),
   mediaUrl: z.string().optional(),
 });
 
 // Strict version for activation validation
 export const messageConfigStrictSchema = z.object({
-  channel: z.enum(['WHATSAPP', 'EMAIL', 'SMS']),
+  channel: z.enum(['WHATSAPP', 'TELEGRAM', 'SMS']),
   content: z.string().min(1, 'Conteúdo da mensagem é obrigatório'),
   mediaUrl: z.string().optional(),
 });

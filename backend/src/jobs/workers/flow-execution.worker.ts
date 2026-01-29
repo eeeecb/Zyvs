@@ -299,13 +299,24 @@ async function sendMessage(
       },
     });
 
+    // Determine destination based on channel
+    let destination: string | null | undefined;
+    switch (config.channel) {
+      case 'WHATSAPP':
+      case 'SMS':
+        destination = contact.phone;
+        break;
+      case 'TELEGRAM':
+        destination = contact.telegramId;
+        break;
+      default:
+        destination = contact.phone;
+    }
+
     return {
       messageId: message.id,
       channel: config.channel,
-      destination:
-        config.channel === 'WHATSAPP' || config.channel === 'SMS'
-          ? contact.phone
-          : contact.email,
+      destination,
       content,
       status: 'QUEUED',
     };

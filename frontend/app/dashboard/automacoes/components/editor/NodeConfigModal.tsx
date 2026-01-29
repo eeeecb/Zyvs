@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, MessageSquare, Mail, Phone } from 'lucide-react';
+import { X, MessageSquare, Send, Phone } from 'lucide-react';
 import { api } from '@/lib/api';
 import type {
   FlowNode,
@@ -255,9 +255,9 @@ function MessageConfigForm({
   onChange: (updates: Partial<MessageConfig>) => void;
 }) {
   const channelOptions = [
-    { value: 'WHATSAPP', label: 'WhatsApp', icon: MessageSquare, color: '#25D366' },
-    { value: 'EMAIL', label: 'Email', icon: Mail, color: '#3b82f6' },
-    { value: 'SMS', label: 'SMS', icon: Phone, color: '#8b5cf6' },
+    { value: 'WHATSAPP', label: 'WhatsApp', icon: MessageSquare, color: '#25D366', enabled: true },
+    { value: 'TELEGRAM', label: 'Telegram', icon: Send, color: '#0088cc', enabled: false, tooltip: 'Em breve' },
+    { value: 'SMS', label: 'SMS', icon: Phone, color: '#8b5cf6', enabled: false, tooltip: 'Indisponível no momento' },
   ];
 
   const variables = [
@@ -280,21 +280,31 @@ function MessageConfigForm({
           {channelOptions.map((option) => {
             const Icon = option.icon;
             const isSelected = config.channel === option.value;
+            const isDisabled = !option.enabled;
 
             return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onChange({ channel: option.value as MessageConfig['channel'] })}
-                className={`flex items-center gap-2 px-3 py-2 border-2 font-semibold text-sm transition ${
-                  isSelected
-                    ? 'border-[#00ff88] bg-[#00ff88]/10'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="w-4 h-4" style={{ color: option.color }} />
-                {option.label}
-              </button>
+              <div key={option.value} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => option.enabled && onChange({ channel: option.value as MessageConfig['channel'] })}
+                  disabled={isDisabled}
+                  className={`flex items-center gap-2 px-3 py-2 border-2 font-semibold text-sm transition ${
+                    isDisabled
+                      ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                      : isSelected
+                      ? 'border-[#00ff88] bg-[#00ff88]/10'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" style={{ color: isDisabled ? '#9ca3af' : option.color }} />
+                  {option.label}
+                </button>
+                {isDisabled && option.tooltip && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    {option.tooltip}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

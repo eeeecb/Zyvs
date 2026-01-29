@@ -12,8 +12,9 @@ export interface BirthdayJobData {
   contactName: string;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  contactTelegramId?: string | null;
   template: string;
-  channel: 'WHATSAPP' | 'EMAIL' | 'SMS' | 'INSTAGRAM_DM';
+  channel: 'WHATSAPP' | 'TELEGRAM' | 'SMS' | 'INSTAGRAM_DM';
 }
 
 // Queue for individual birthday messages

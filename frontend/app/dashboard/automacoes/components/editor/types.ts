@@ -16,7 +16,7 @@ export interface DelayConfig {
 
 // Message configuration
 export interface MessageConfig {
-  channel: 'WHATSAPP' | 'EMAIL' | 'SMS';
+  channel: 'WHATSAPP' | 'TELEGRAM' | 'SMS';
   content: string;
   mediaUrl?: string;
 }

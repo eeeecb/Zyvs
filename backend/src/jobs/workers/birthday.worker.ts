@@ -26,7 +26,7 @@ function replaceTemplateVariables(
  * Process a single birthday message
  */
 async function processBirthdayMessage(job: Job<BirthdayJobData>) {
-  const { organizationId, contactId, contactName, contactPhone, contactEmail, template, channel } = job.data;
+  const { organizationId, contactId, contactName, contactPhone, contactEmail, contactTelegramId, template, channel } = job.data;
 
   console.log(`Sending birthday message to ${contactName} (${contactId}) via ${channel}`);
 
@@ -38,10 +38,25 @@ async function processBirthdayMessage(job: Job<BirthdayJobData>) {
   });
 
   // Determine destination based on channel
-  const destination = channel === 'EMAIL' ? contactEmail : contactPhone;
+  let destination: string | null | undefined;
+  let missingField: string;
+  switch (channel) {
+    case 'WHATSAPP':
+    case 'SMS':
+      destination = contactPhone;
+      missingField = 'phone';
+      break;
+    case 'TELEGRAM':
+      destination = contactTelegramId;
+      missingField = 'telegramId';
+      break;
+    default:
+      destination = contactPhone;
+      missingField = 'phone';
+  }
 
   if (!destination) {
-    throw new Error(`No ${channel === 'EMAIL' ? 'email' : 'phone'} for contact ${contactName}`);
+    throw new Error(`No ${missingField} for contact ${contactName}`);
   }
 
   // Create message record
@@ -157,6 +172,7 @@ export async function processBirthdays(): Promise<void> {
         name: true,
         email: true,
         phone: true,
+        telegramId: true,
         birthdate: true,
       },
     });
@@ -201,6 +217,7 @@ export async function processBirthdays(): Promise<void> {
         contactName: contact.name,
         contactPhone: contact.phone,
         contactEmail: contact.email,
+        contactTelegramId: contact.telegramId,
         template: automation.template,
         channel: automation.channel,
       });
