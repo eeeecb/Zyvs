@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { ImportService } from './import/import.service';
 import { importConfigSchema, contactSchema, updateContactSchema } from './contacts.schema';
 import { prisma } from '../../lib/prisma';
+import { flowTriggerService } from '../flows/flow-trigger.service';
 import * as XLSX from 'xlsx';
 
 const importService = new ImportService();
@@ -274,6 +275,11 @@ export async function createContact(req: FastifyRequest, reply: FastifyReply) {
     await prisma.organization.update({
       where: { id: organizationId },
       data: { currentContacts: { increment: 1 } },
+    });
+
+    // Trigger flows for new contact
+    flowTriggerService.onNewContact(contact.id, organizationId).catch((err) => {
+      console.error('Error triggering flows for new contact:', err);
     });
 
     return reply.status(201).send(contact);

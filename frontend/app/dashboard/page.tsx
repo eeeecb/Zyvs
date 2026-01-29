@@ -16,8 +16,9 @@ import { api } from '@/lib/api';
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const [realContactsCount, setRealContactsCount] = useState<number>(0);
+  const [realFlowsCount, setRealFlowsCount] = useState<number>(0);
 
-  // Buscar contagem real de contatos
+  // Buscar contagem real de contatos e flows
   useEffect(() => {
     const fetchContactsCount = async () => {
       try {
@@ -30,8 +31,20 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchFlowsCount = async () => {
+      try {
+        const response = await api.get('/api/flows', {
+          params: { page: 1, limit: 1 },
+        });
+        setRealFlowsCount(response.data.pagination.total);
+      } catch (error) {
+        console.error('Erro ao buscar contagem de flows:', error);
+      }
+    };
+
     if (user?.organizationId) {
       fetchContactsCount();
+      fetchFlowsCount();
     }
   }, [user?.organizationId]);
 
@@ -45,7 +58,7 @@ export default function DashboardPage() {
     },
     {
       name: 'Flows Ativos',
-      value: user?.organization?.currentFlows || 0,
+      value: realFlowsCount,
       max: user?.organization?.maxFlows || 3,
       icon: Zap,
       color: '#ff3366',

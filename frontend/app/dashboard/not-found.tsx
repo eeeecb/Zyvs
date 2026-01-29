@@ -102,14 +102,6 @@ export default function NotFound() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div className="p-3 bg-gray-50 border-l-2 border-gray-300">
-              <p className="font-bold text-black">Automações</p>
-              <p className="text-xs text-gray-600 mt-1">Em breve</p>
-            </div>
-            <div className="p-3 bg-gray-50 border-l-2 border-gray-300">
-              <p className="font-bold text-black">Pipeline</p>
-              <p className="text-xs text-gray-600 mt-1">Em breve</p>
-            </div>
-            <div className="p-3 bg-gray-50 border-l-2 border-gray-300">
               <p className="font-bold text-black">Campanhas</p>
               <p className="text-xs text-gray-600 mt-1">Em breve</p>
             </div>

@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { tagSchema } from './tags.schema';
 import { prisma } from '../../lib/prisma';
+import { flowTriggerService } from '../flows/flow-trigger.service';
 
 /**
  * GET /api/tags
@@ -239,6 +240,11 @@ export async function addTagToContact(req: FastifyRequest, reply: FastifyReply) 
       },
     });
 
+    // Trigger flows for tag added
+    flowTriggerService.onTagAdded(contactId, organizationId!, tagId).catch((err) => {
+      console.error('Error triggering flows for tag added:', err);
+    });
+
     return reply.send({ success: true, message: 'Tag adicionada ao contato' });
   } catch (error: any) {
     return reply.status(500).send({
@@ -274,6 +280,11 @@ export async function removeTagFromContact(req: FastifyRequest, reply: FastifyRe
           disconnect: { id: tagId },
         },
       },
+    });
+
+    // Trigger flows for tag removed
+    flowTriggerService.onTagRemoved(contactId, organizationId!, tagId).catch((err) => {
+      console.error('Error triggering flows for tag removed:', err);
     });
 
     return reply.send({ success: true, message: 'Tag removida do contato' });
