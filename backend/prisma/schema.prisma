@@ -189,6 +189,9 @@ model Contact {
   cpf             String?
   address         Json?         // { street, city, state, zip, country }
 
+  // Telegram
+  telegramId      String?
+
   // Informações de negócio
   dealValue       Decimal?      @db.Decimal(10, 2)
   source          String?       // De onde veio (landing page, indicação, etc)
@@ -388,7 +391,7 @@ enum CampaignStatus {
 
 enum MessageChannel {
   WHATSAPP
-  EMAIL
+  TELEGRAM
   SMS
   INSTAGRAM_DM
 }
