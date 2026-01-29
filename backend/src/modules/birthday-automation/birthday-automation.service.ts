@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { MessageChannel } from '@prisma/client';
 import type { UpdateBirthdayAutomationInput } from './birthday-automation.schema';
 
 export class BirthdayAutomationService {
@@ -43,7 +44,7 @@ export class BirthdayAutomationService {
       data: {
         ...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
         ...(data.template && { template: data.template }),
-        ...(data.channel && { channel: data.channel }),
+        ...(data.channel && { channel: data.channel as MessageChannel }),
         ...(data.sendAtHour !== undefined && { sendAtHour: data.sendAtHour }),
       },
     });
