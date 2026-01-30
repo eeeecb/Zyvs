@@ -5,6 +5,7 @@ import {
   getUserById,
   updateUserRole,
   resetUserPassword,
+  disable2FA,
   listOrganizations,
   getOrganizationById,
   listAuditLogs,
@@ -23,6 +24,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/users/:id', getUserById);
   fastify.patch('/users/:id/role', updateUserRole);
   fastify.post('/users/:id/reset-password', resetUserPassword);
+  fastify.post('/users/:id/disable-2fa', disable2FA);
 
   // Organizações
   fastify.get('/organizations', listOrganizations);
