@@ -50,7 +50,7 @@ export function PrivacyTab() {
   // Enable 2FA mutation
   const { mutate: enable2FA, isPending: isEnabling2FA } = useMutation({
     mutationFn: (password: string) =>
-      api.post('/settings/2fa/enable', { password }),
+      api.post('/api/settings/2fa/enable', { password }),
     onSuccess: (response) => {
       setQrCodeImage(response.data.qrCodeImage);
       setManualSecret(response.data.secret);
@@ -65,7 +65,7 @@ export function PrivacyTab() {
   // Verify 2FA mutation
   const { mutate: verify2FA, isPending: isVerifying2FA } = useMutation({
     mutationFn: (token: string) =>
-      api.post('/settings/2fa/verify', { token }),
+      api.post('/api/settings/2fa/verify', { token }),
     onSuccess: (response) => {
       toast.success('2FA ativado com sucesso!');
       setShowQRCode(false);
@@ -136,7 +136,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
   // Disable 2FA mutation
   const { mutate: disable2FA, isPending: isDisabling2FA } = useMutation({
     mutationFn: ({ password, token }: { password: string; token: string }) =>
-      api.post('/settings/2fa/disable', { password, token }),
+      api.post('/api/settings/2fa/disable', { password, token }),
     onSuccess: () => {
       toast.success('2FA desativado com sucesso');
       window.location.reload();
@@ -149,7 +149,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
   // Revoke session mutation
   const { mutate: revokeSession } = useMutation({
     mutationFn: (sessionId: string) =>
-      api.delete(`/settings/sessions/${sessionId}`),
+      api.delete(`/api/settings/sessions/${sessionId}`),
     onSuccess: () => {
       toast.success('Sessão encerrada');
       refetchSessions();
@@ -161,7 +161,7 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
 
   // Request data export mutation
   const { mutate: requestExport, isPending: isRequestingExport } = useMutation({
-    mutationFn: () => api.post('/settings/export-data'),
+    mutationFn: () => api.post('/api/settings/export-data'),
     onSuccess: (response) => {
       toast.success(response.data.message);
     },
