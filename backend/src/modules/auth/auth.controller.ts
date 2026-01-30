@@ -77,7 +77,7 @@ export async function me(req: FastifyRequest, reply: FastifyReply) {
       return reply.status(404).send({ error: 'Usuário não encontrado' });
     }
 
-    return reply.send(user);
+    return reply.send({ user });
   } catch (error: any) {
     return reply.status(500).send({ error: error.message });
   }
