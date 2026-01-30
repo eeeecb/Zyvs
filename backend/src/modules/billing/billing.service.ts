@@ -233,7 +233,7 @@ export class BillingService {
   }
 
   /**
-   * Atualiza plano do usuário e da organização
+   * Atualiza plano do usuário e da organização em uma transação atômica
    */
   private async updateUserPlan(
     userId: string,
@@ -243,39 +243,71 @@ export class BillingService {
   ) {
     const limits = PLAN_LIMITS[plan];
 
-    // Atualizar usuário
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        plan,
-        stripeSubscriptionId: subscriptionId,
-        stripeCurrentPeriodEnd: currentPeriodEnd,
-        planExpiry: null, // Limpar expiry quando ativa subscription
-      },
-      select: { organizationId: true },
-    });
-
-    // Atualizar limites da organização se o usuário pertence a uma
-    if (user.organizationId) {
-      await prisma.organization.update({
-        where: { id: user.organizationId },
+    // Usar transação para garantir consistência entre User e Organization
+    await prisma.$transaction(async (tx) => {
+      // Atualizar usuário
+      const user = await tx.user.update({
+        where: { id: userId },
         data: {
           plan,
-          maxContacts: limits.maxContacts,
-          maxFlows: limits.maxFlows,
-          maxMessagesPerMonth: limits.maxMessages,
+          stripeSubscriptionId: subscriptionId || null,
+          stripeCurrentPeriodEnd: currentPeriodEnd || null,
+          planExpiry: null, // Limpar expiry quando ativa subscription
         },
+        select: { organizationId: true },
       });
-    }
+
+      // Atualizar limites da organização se o usuário pertence a uma
+      if (user.organizationId) {
+        await tx.organization.update({
+          where: { id: user.organizationId },
+          data: {
+            plan,
+            maxContacts: limits.maxContacts,
+            maxFlows: limits.maxFlows,
+            maxMessagesPerMonth: limits.maxMessages,
+          },
+        });
+      }
+    });
 
     console.log(`✅ Plano atualizado para usuário ${userId}: ${plan}`);
   }
 
   /**
-   * Processa webhooks do Stripe
+   * Processa webhooks do Stripe com idempotência
    */
   async handleWebhook(event: Stripe.Event) {
-    console.log(`📥 Webhook recebido: ${event.type}`);
+    console.log(`📥 Webhook recebido: ${event.type} (${event.id})`);
+
+    // Verificar idempotência - se evento já foi processado, ignorar
+    const existingEvent = await prisma.webhookEvent.findUnique({
+      where: { stripeEventId: event.id },
+    });
+
+    if (existingEvent) {
+      if (existingEvent.status === 'COMPLETED') {
+        console.log(`ℹ️ Evento ${event.id} já foi processado, ignorando`);
+        return;
+      }
+      if (existingEvent.status === 'PROCESSING') {
+        console.log(`⚠️ Evento ${event.id} está sendo processado, ignorando duplicata`);
+        return;
+      }
+    }
+
+    // Criar ou atualizar registro do evento como PROCESSING
+    await prisma.webhookEvent.upsert({
+      where: { stripeEventId: event.id },
+      create: {
+        stripeEventId: event.id,
+        eventType: event.type,
+        status: 'PROCESSING',
+      },
+      update: {
+        status: 'PROCESSING',
+      },
+    });
 
     try {
       switch (event.type) {
@@ -324,8 +356,28 @@ export class BillingService {
         default:
           console.log(`ℹ️ Evento não tratado: ${event.type}`);
       }
+
+      // Marcar evento como processado com sucesso
+      await prisma.webhookEvent.update({
+        where: { stripeEventId: event.id },
+        data: {
+          status: 'COMPLETED',
+          processedAt: new Date(),
+        },
+      });
     } catch (error: any) {
       console.error(`❌ Erro ao processar webhook ${event.type}:`, error);
+
+      // Marcar evento como falho
+      await prisma.webhookEvent.update({
+        where: { stripeEventId: event.id },
+        data: {
+          status: 'FAILED',
+          error: error.message || 'Erro desconhecido',
+          processedAt: new Date(),
+        },
+      });
+
       throw error;
     }
   }
@@ -339,8 +391,9 @@ export class BillingService {
     const subscriptionId = session.subscription as string;
 
     if (!userId || !plan) {
-      console.error('❌ Metadata incompleto no checkout.session.completed');
-      return;
+      throw new Error(
+        `Metadata incompleto no checkout.session.completed: userId=${userId}, plan=${plan}`
+      );
     }
 
     await this.updateUserPlan(userId, plan, subscriptionId);
@@ -354,8 +407,9 @@ export class BillingService {
     const userId = subscription.metadata?.userId;
     const plan = subscription.metadata?.plan as Plan;
 
+    // Se não tem metadata, é esperado - o checkout.session.completed já processou
     if (!userId || !plan) {
-      console.log('ℹ️ Subscription criada sem metadata (possivelmente via checkout)');
+      console.log('ℹ️ Subscription criada sem metadata (já processado via checkout)');
       return;
     }
 
@@ -369,11 +423,20 @@ export class BillingService {
    * Handler: customer.subscription.updated
    */
   private async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-    const userId = subscription.metadata?.userId;
+    let userId = subscription.metadata?.userId;
 
+    // Se não tem userId no metadata, tentar buscar pelo subscription ID
     if (!userId) {
-      console.log('ℹ️ Subscription atualizada sem userId no metadata');
-      return;
+      const user = await prisma.user.findFirst({
+        where: { stripeSubscriptionId: subscription.id },
+        select: { id: true },
+      });
+
+      if (!user) {
+        console.log('ℹ️ Subscription atualizada sem userId associado');
+        return;
+      }
+      userId = user.id;
     }
 
     // Verificar se foi cancelada (agendado para o final do período)

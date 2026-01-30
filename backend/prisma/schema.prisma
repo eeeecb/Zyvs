@@ -701,3 +701,29 @@ model DataExportRequest {
   @@index([status, createdAt])
   @@map("data_export_requests")
 }
+
+// =====================================================
+// WEBHOOK EVENTS (IDEMPOTÊNCIA STRIPE)
+// =====================================================
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model WebhookEvent {
+  id            String             @id @default(cuid())
+  stripeEventId String             @unique
+  eventType     String
+  status        WebhookEventStatus @default(PENDING)
+  processedAt   DateTime?
+  error         String?            @db.Text
+
+  createdAt     DateTime           @default(now())
+
+  @@index([stripeEventId])
+  @@index([status, createdAt])
+  @@map("webhook_events")
+}

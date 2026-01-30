@@ -11,12 +11,44 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast';
 
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const [realContactsCount, setRealContactsCount] = useState<number>(0);
   const [realFlowsCount, setRealFlowsCount] = useState<number>(0);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Detectar checkout=success e atualizar dados do usuário
+  useEffect(() => {
+    const checkoutStatus = searchParams.get('checkout');
+
+    if (checkoutStatus === 'success') {
+      // Remover query param da URL
+      router.replace('/dashboard', { scroll: false });
+
+      // Buscar dados atualizados do usuário
+      const refreshUserData = async () => {
+        try {
+          const response = await api.get('/api/auth/me');
+          setUser(response.data.user);
+          toast.success('Plano ativado com sucesso!', {
+            description: `Você agora está no plano ${response.data.user.organization?.plan || response.data.user.plan}`,
+          });
+        } catch (error) {
+          console.error('Erro ao atualizar dados do usuário:', error);
+          toast.error('Erro ao verificar plano', {
+            description: 'Por favor, recarregue a página',
+          });
+        }
+      };
+
+      refreshUserData();
+    }
+  }, [searchParams, router, setUser]);
 
   // Buscar contagem real de contatos e flows
   useEffect(() => {
