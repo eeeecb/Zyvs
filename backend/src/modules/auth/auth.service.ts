@@ -71,7 +71,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Credenciais inválidas');
+      throw new Error('Usuário não encontrado');
     }
 
     // 2. Verificar senha
