@@ -167,22 +167,26 @@ export async function handleWebhook(
       process.env.STRIPE_WEBHOOK_SECRET
     );
 
-    // Processar evento de forma assíncrona
-    // Não bloquear a resposta, pois o Stripe tem timeout de 30s
-    setImmediate(async () => {
-      try {
-        await billingService.handleWebhook(event);
-      } catch (error) {
-        console.error('❌ Erro ao processar webhook:', error);
-      }
-    });
+    // Processar evento sincronamente para garantir que o plano seja atualizado
+    // antes de responder ao Stripe (timeout de 30s é suficiente para DB operations)
+    await billingService.handleWebhook(event);
 
-    // Responder imediatamente ao Stripe
     return reply.send({ received: true });
   } catch (error: any) {
-    console.error('❌ Erro ao validar webhook:', error.message);
-    return reply.status(400).send({
-      error: 'Erro ao validar assinatura do webhook',
+    console.error('❌ Erro ao processar webhook:', error.message);
+
+    // Se for erro de validação de assinatura, retornar 400
+    if (error.type === 'StripeSignatureVerificationError') {
+      return reply.status(400).send({
+        error: 'Erro ao validar assinatura do webhook',
+        message: error.message,
+      });
+    }
+
+    // Para outros erros de processamento, retornar 500
+    // Isso fará o Stripe retentar o webhook
+    return reply.status(500).send({
+      error: 'Erro ao processar webhook',
       message: error.message,
     });
   }
