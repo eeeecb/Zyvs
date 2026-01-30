@@ -70,6 +70,7 @@ model User {
   // Settings - Privacidade e Segurança
   twoFactorEnabled      Boolean   @default(false)
   twoFactorSecret       String?
+  backupCodes           BackupCode[]
 
   // Timestamps
   createdAt     DateTime  @default(now())
@@ -606,6 +607,7 @@ enum AuditAction {
   LOGOUT
   EXPORT
   IMPORT
+  TWO_FA_DISABLED_BY_ADMIN
 }
 
 model AuditLog {
@@ -665,6 +667,24 @@ model Session {
   @@index([userId])
   @@index([token])
   @@map("sessions")
+}
+
+// =====================================================
+// CÓDIGOS DE BACKUP 2FA
+// =====================================================
+
+model BackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  codeHash  String    // bcrypt hash do código
+  usedAt    DateTime?
+
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("backup_codes")
 }
 
 // =====================================================
