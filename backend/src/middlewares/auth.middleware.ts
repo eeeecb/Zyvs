@@ -3,6 +3,14 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 export async function authenticate(req: FastifyRequest, reply: FastifyReply) {
   try {
     await req.jwtVerify();
+
+    // Reject tokens that are pending 2FA verification
+    if ((req.user as any).pending2FA) {
+      return reply.status(401).send({
+        error: 'Verificação 2FA pendente',
+        code: 'PENDING_2FA',
+      });
+    }
   } catch (err) {
     return reply.status(401).send({ error: 'Não autenticado' });
   }
