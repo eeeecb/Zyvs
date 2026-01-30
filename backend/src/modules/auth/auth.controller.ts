@@ -132,7 +132,7 @@ export async function verify2FALogin(req: FastifyRequest, reply: FastifyReply) {
         details: error.errors,
       });
     }
-    return reply.status(401).send({
+    return reply.status(400).send({
       error: error.message,
     });
   }
