@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { RegisterInput, LoginInput } from './auth.schema';
@@ -70,7 +71,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Credenciais inválidas');
+      throw new Error('Usuário não encontrado');
     }
 
     // 2. Verificar senha
@@ -93,6 +94,81 @@ export class AuthService {
       plan: user.plan,
       organizationId: user.organizationId,
       organization: user.organization,
+      twoFactorEnabled: user.twoFactorEnabled,
+    };
+  }
+
+  async verify2FALogin(userId: string, code: string, isBackupCode: boolean) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        plan: true,
+        organizationId: true,
+        organization: true,
+        twoFactorEnabled: true,
+        twoFactorSecret: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new Error('2FA não está ativado para este usuário');
+    }
+
+    if (isBackupCode) {
+      // Validate backup code
+      const backupCodes = await prisma.backupCode.findMany({
+        where: { userId, usedAt: null },
+      });
+
+      let validCodeId: string | null = null;
+      for (const backupCode of backupCodes) {
+        const isMatch = await bcrypt.compare(code.toUpperCase(), backupCode.codeHash);
+        if (isMatch) {
+          validCodeId = backupCode.id;
+          break;
+        }
+      }
+
+      if (!validCodeId) {
+        throw new Error('Código de backup inválido ou já utilizado');
+      }
+
+      // Mark backup code as used
+      await prisma.backupCode.update({
+        where: { id: validCodeId },
+        data: { usedAt: new Date() },
+      });
+    } else {
+      // Validate TOTP code
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: code,
+        window: 2,
+      });
+
+      if (!verified) {
+        throw new Error('Código inválido');
+      }
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      plan: user.plan,
+      organizationId: user.organizationId,
+      organization: user.organization,
+      twoFactorEnabled: user.twoFactorEnabled,
     };
   }
 
@@ -106,6 +182,7 @@ export class AuthService {
         avatar: true,
         role: true,
         plan: true,
+        twoFactorEnabled: true,
         organizationId: true,
         organization: {
           select: {

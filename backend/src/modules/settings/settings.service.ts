@@ -1,6 +1,8 @@
 import { prisma } from '../../lib/prisma';
 import bcrypt from 'bcryptjs';
 import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
 import type {
   UpdateProfileInput,
   ChangePasswordInput,
@@ -128,7 +130,7 @@ export class SettingsService {
   async enable2FA(userId: string, data: Enable2FAInput) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { password: true, twoFactorEnabled: true },
+      select: { password: true, twoFactorEnabled: true, email: true },
     });
 
     if (!user) {
@@ -147,9 +149,13 @@ export class SettingsService {
 
     // Generate secret
     const secret = speakeasy.generateSecret({
-      name: 'Thumdra CRM',
+      name: `Thumdra:${user.email}`,
       length: 32,
     });
+
+    // Generate QR code image as base64
+    const otpauthUrl = secret.otpauth_url!;
+    const qrCodeImage = await QRCode.toDataURL(otpauthUrl);
 
     // Save secret to user (but don't enable yet - needs verification)
     await prisma.user.update({
@@ -159,8 +165,45 @@ export class SettingsService {
 
     return {
       secret: secret.base32,
-      qrCode: secret.otpauth_url,
+      otpauthUrl,
+      qrCodeImage,
     };
+  }
+
+  /**
+   * Generate a single backup code in format XXXX-XXXX
+   */
+  private generateBackupCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar chars (0, O, 1, I)
+    let code = '';
+    const bytes = crypto.randomBytes(8);
+    for (let i = 0; i < 8; i++) {
+      code += chars[bytes[i] % chars.length];
+    }
+    return `${code.slice(0, 4)}-${code.slice(4)}`;
+  }
+
+  /**
+   * Generate 10 backup codes and store their hashes
+   */
+  private async generateAndStoreBackupCodes(userId: string): Promise<string[]> {
+    // Delete any existing backup codes for this user
+    await prisma.backupCode.deleteMany({ where: { userId } });
+
+    const plainCodes: string[] = [];
+    const backupCodeRecords: { userId: string; codeHash: string }[] = [];
+
+    for (let i = 0; i < 10; i++) {
+      const code = this.generateBackupCode();
+      plainCodes.push(code);
+      const hash = await bcrypt.hash(code, 10);
+      backupCodeRecords.push({ userId, codeHash: hash });
+    }
+
+    // Store all hashed codes
+    await prisma.backupCode.createMany({ data: backupCodeRecords });
+
+    return plainCodes;
   }
 
   async verify2FA(userId: string, token: string) {
@@ -191,7 +234,14 @@ export class SettingsService {
       data: { twoFactorEnabled: true },
     });
 
-    return { success: true, message: '2FA ativado com sucesso' };
+    // Generate backup codes
+    const backupCodes = await this.generateAndStoreBackupCodes(userId);
+
+    return {
+      success: true,
+      message: '2FA ativado com sucesso',
+      backupCodes,
+    };
   }
 
   async disable2FA(userId: string, data: Disable2FAInput) {
@@ -234,14 +284,17 @@ export class SettingsService {
       throw new Error('Token inválido');
     }
 
-    // Disable 2FA and remove secret
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-      },
-    });
+    // Disable 2FA, remove secret, and delete backup codes
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+        },
+      }),
+      prisma.backupCode.deleteMany({ where: { userId } }),
+    ]);
 
     return { success: true, message: '2FA desativado com sucesso' };
   }

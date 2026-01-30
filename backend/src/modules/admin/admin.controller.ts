@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AdminService } from './admin.service';
+import { disable2FASchema } from './admin.schema';
 
 const adminService = new AdminService();
 
@@ -160,6 +161,36 @@ export async function resetUserPassword(
   } catch (error: any) {
     return reply.status(500).send({
       error: 'Erro ao resetar senha',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * POST /api/admin/users/:id/disable-2fa
+ * Desativa 2FA de um usuário
+ */
+export async function disable2FA(req: FastifyRequest, reply: FastifyReply) {
+  try {
+    const { id } = req.params as { id: string };
+    const adminId = req.user.userId;
+
+    // Validate request body
+    const parseResult = disable2FASchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: 'Dados inválidos',
+        details: parseResult.error.errors,
+      });
+    }
+
+    const { reason } = parseResult.data;
+
+    const result = await adminService.disable2FAForUser(id, reason, adminId);
+    return reply.send(result);
+  } catch (error: any) {
+    return reply.status(400).send({
+      error: 'Erro ao desativar 2FA',
       message: error.message,
     });
   }

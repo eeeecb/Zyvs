@@ -91,6 +91,7 @@ export class AdminService {
           stripeSubscriptionId: true,
           stripeCurrentPeriodEnd: true,
           onboardingCompleted: true,
+          twoFactorEnabled: true,
           createdAt: true,
           updatedAt: true,
           lastLoginAt: true,
@@ -316,6 +317,70 @@ export class AdminService {
     });
 
     return { success: true };
+  }
+
+  /**
+   * Desativa 2FA de um usuário (admin action)
+   */
+  async disable2FAForUser(
+    targetUserId: string,
+    reason: string,
+    adminId: string
+  ) {
+    // 1. Verificar se o usuário existe e tem 2FA ativado
+    const user = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        twoFactorEnabled: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new Error('2FA não está ativado para este usuário');
+    }
+
+    // 2. Desativar 2FA e remover backup codes em transação
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: targetUserId },
+        data: {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+        },
+      }),
+      prisma.backupCode.deleteMany({
+        where: { userId: targetUserId },
+      }),
+      // 3. Registrar no AuditLog
+      prisma.auditLog.create({
+        data: {
+          userId: adminId,
+          action: 'TWO_FA_DISABLED_BY_ADMIN',
+          tableName: 'users',
+          recordId: targetUserId,
+          metadata: {
+            targetUserEmail: user.email,
+            targetUserName: user.name,
+            reason,
+          },
+        },
+      }),
+    ]);
+
+    // TODO: Enviar email ao usuário notificando que 2FA foi desativado
+    // await emailService.send2FADisabledNotification(user.email, user.name, reason);
+
+    return {
+      success: true,
+      message: `2FA desativado para ${user.email}`,
+    };
   }
 
   /**
