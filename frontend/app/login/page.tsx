@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { ArrowLeft, Sparkles, MessageSquare, Users, Zap } from 'lucide-react';
+import { ArrowLeft, Sparkles, MessageSquare, Users, Zap, Shield, Loader2, KeyRound } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -23,6 +23,66 @@ export default function LoginPage() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // 2FA state
+  const [show2FAOverlay, setShow2FAOverlay] = useState(false);
+  const [tempToken, setTempToken] = useState('');
+  const [twoFACode, setTwoFACode] = useState('');
+  const [isBackupCode, setIsBackupCode] = useState(false);
+  const [twoFAError, setTwoFAError] = useState('');
+  const [isVerifying2FA, setIsVerifying2FA] = useState(false);
+
+  // Block ESC key when 2FA overlay is shown
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (show2FAOverlay && e.key === 'Escape') {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [show2FAOverlay]);
+
+  // Handle 2FA verification
+  const handleVerify2FA = useCallback(async () => {
+    if (!twoFACode.trim()) {
+      setTwoFAError('Digite o código');
+      return;
+    }
+
+    try {
+      setTwoFAError('');
+      setIsVerifying2FA(true);
+
+      const response = await api.post('/api/auth/2fa/verify', {
+        tempToken,
+        code: twoFACode,
+        isBackupCode,
+      });
+
+      const { user, token } = response.data;
+      setAuth(user, token);
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } } };
+        setTwoFAError(axiosError.response?.data?.error || 'Código inválido');
+      } else {
+        setTwoFAError('Erro ao verificar código');
+      }
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  }, [twoFACode, tempToken, isBackupCode, setAuth, router]);
+
+  // Handle cancel 2FA - reset everything
+  const handleCancel2FA = () => {
+    setShow2FAOverlay(false);
+    setTempToken('');
+    setTwoFACode('');
+    setTwoFAError('');
+    setIsBackupCode(false);
+  };
 
   const {
     register,
@@ -38,8 +98,16 @@ export default function LoginPage() {
       setIsLoading(true);
 
       const response = await api.post('/api/auth/login', data);
-      const { user, token } = response.data;
 
+      // Check if 2FA is required
+      if (response.data.requires2FA) {
+        setTempToken(response.data.tempToken);
+        setShow2FAOverlay(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const { user, token } = response.data;
       setAuth(user, token);
 
       // Sempre redirecionar para o dashboard normal
@@ -262,6 +330,106 @@ export default function LoginPage() {
           </motion.form>
         </div>
       </div>
+
+      {/* 2FA Verification Overlay */}
+      {show2FAOverlay && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white brutal-border-thick p-8 max-w-md mx-4 w-full"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-[#00ff88] brutal-border flex items-center justify-center">
+                <Shield className="w-6 h-6 text-black" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold uppercase">Verificação 2FA</h3>
+                <p className="text-sm text-gray-600 font-bold">
+                  {isBackupCode ? 'Digite um código de backup' : 'Digite o código do seu app'}
+                </p>
+              </div>
+            </div>
+
+            {twoFAError && (
+              <div className="bg-[#ff3366] text-white p-3 brutal-border mb-4 text-sm font-bold uppercase">
+                {twoFAError}
+              </div>
+            )}
+
+            <div className="mb-6">
+              {isBackupCode ? (
+                <input
+                  type="text"
+                  value={twoFACode}
+                  onChange={(e) => setTwoFACode(e.target.value.toUpperCase())}
+                  placeholder="XXXX-XXXX"
+                  maxLength={9}
+                  className="w-full px-4 py-4 brutal-border bg-white focus:outline-none focus:ring-4 focus:ring-[#00ff88]/30 transition font-mono text-lg text-center uppercase tracking-widest"
+                  autoFocus
+                  disabled={isVerifying2FA}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={twoFACode}
+                  onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  maxLength={6}
+                  className="w-full px-4 py-4 brutal-border bg-white focus:outline-none focus:ring-4 focus:ring-[#00ff88]/30 transition font-mono text-2xl text-center tracking-[0.5em]"
+                  autoFocus
+                  disabled={isVerifying2FA}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && twoFACode.length === 6) {
+                      handleVerify2FA();
+                    }
+                  }}
+                />
+              )}
+            </div>
+
+            <motion.button
+              whileHover={{ x: 2, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleVerify2FA}
+              disabled={isVerifying2FA || (isBackupCode ? twoFACode.length < 9 : twoFACode.length !== 6)}
+              className="w-full bg-[#00ff88] text-black py-4 brutal-border brutal-shadow font-extrabold uppercase tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isVerifying2FA ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  VERIFICANDO...
+                </>
+              ) : (
+                'VERIFICAR'
+              )}
+            </motion.button>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t-2 border-black">
+              <button
+                onClick={() => {
+                  setIsBackupCode(!isBackupCode);
+                  setTwoFACode('');
+                  setTwoFAError('');
+                }}
+                disabled={isVerifying2FA}
+                className="flex items-center gap-2 text-sm font-bold uppercase hover:underline transition disabled:opacity-50"
+              >
+                <KeyRound className="w-4 h-4" />
+                {isBackupCode ? 'Usar app autenticador' : 'Usar código de backup'}
+              </button>
+
+              <button
+                onClick={handleCancel2FA}
+                disabled={isVerifying2FA}
+                className="px-4 py-2 brutal-border bg-white hover:bg-gray-50 font-bold uppercase text-xs transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

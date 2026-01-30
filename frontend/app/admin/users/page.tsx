@@ -22,6 +22,9 @@ import {
   Key,
   UserCog,
   AlertCircle,
+  ShieldCheck,
+  ShieldOff,
+  Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -40,6 +43,7 @@ interface User {
   stripeSubscriptionId?: string;
   stripeCurrentPeriodEnd?: string;
   onboardingCompleted: boolean;
+  twoFactorEnabled?: boolean;
   organization?: {
     id: string;
     name: string;
@@ -70,6 +74,9 @@ export default function AdminUsersPage() {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showDisable2FA, setShowDisable2FA] = useState(false);
+  const [disable2FAReason, setDisable2FAReason] = useState('');
+  const [disable2FALoading, setDisable2FALoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
     page: 1,
@@ -152,6 +159,32 @@ export default function AdminUsersPage() {
       toast.error(axiosError.response?.data?.message || 'Erro ao resetar senha');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!selectedUser) return;
+    if (disable2FAReason.length < 5) {
+      toast.warning('O motivo deve ter pelo menos 5 caracteres');
+      return;
+    }
+
+    try {
+      setDisable2FALoading(true);
+      await api.post(`/api/admin/users/${selectedUser.id}/disable-2fa`, {
+        reason: disable2FAReason,
+      });
+      toast.success('2FA desativado com sucesso!');
+      setShowDisable2FA(false);
+      setDisable2FAReason('');
+      // Update local state
+      setSelectedUser({ ...selectedUser, twoFactorEnabled: false });
+      loadUsers();
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Erro ao desativar 2FA');
+    } finally {
+      setDisable2FALoading(false);
     }
   };
 
@@ -277,6 +310,15 @@ export default function AdminUsersPage() {
                           <RoleIcon className="w-3 h-3" strokeWidth={2.5} />
                           {user.role}
                         </div>
+                        {user.twoFactorEnabled && (
+                          <div
+                            className="px-2 py-1 text-xs font-bold text-black flex items-center gap-1 bg-[#00ff88] border border-black"
+                            title="2FA Ativado"
+                          >
+                            <ShieldCheck className="w-3 h-3" strokeWidth={2.5} />
+                            2FA
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Mail className="w-4 h-4" strokeWidth={2} />
@@ -483,7 +525,7 @@ export default function AdminUsersPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => !showResetPassword && setSelectedUser(null)}
+            onClick={() => !showResetPassword && !showDisable2FA && setSelectedUser(null)}
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
@@ -506,6 +548,8 @@ export default function AdminUsersPage() {
                       setSelectedUser(null);
                       setShowResetPassword(false);
                       setNewPassword('');
+                      setShowDisable2FA(false);
+                      setDisable2FAReason('');
                     }}
                     className="p-2 hover:bg-gray-200 transition"
                   >
@@ -607,6 +651,78 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Disable 2FA Section */}
+                {selectedUser.twoFactorEnabled && (
+                  <div className="border-2 border-black p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ShieldOff className="w-5 h-5 text-black" strokeWidth={2} />
+                      <h3 className="font-bold text-black">Desativar 2FA</h3>
+                      <div className="px-2 py-0.5 text-xs font-bold text-black bg-[#00ff88] border border-black">
+                        ATIVO
+                      </div>
+                    </div>
+
+                    {!showDisable2FA ? (
+                      <button
+                        onClick={() => setShowDisable2FA(true)}
+                        className="w-full px-4 py-2 bg-[#ff3366] hover:bg-[#dd2244] text-white font-bold border-2 border-black transition flex items-center justify-center gap-2"
+                      >
+                        <ShieldOff className="w-4 h-4" strokeWidth={2} />
+                        Desativar 2FA do Usuário
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-1">
+                            Motivo da desativação *
+                          </label>
+                          <textarea
+                            placeholder="Ex: Usuário perdeu acesso ao celular"
+                            value={disable2FAReason}
+                            onChange={(e) => setDisable2FAReason(e.target.value)}
+                            rows={3}
+                            className="w-full px-4 py-2 border-2 border-black font-medium focus:outline-none focus:border-[#00ff88] resize-none"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleDisable2FA}
+                            disabled={disable2FALoading || disable2FAReason.length < 5}
+                            className="flex-1 px-4 py-2 bg-[#ff3366] hover:bg-[#dd2244] text-white font-bold border-2 border-black transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {disable2FALoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Desativando...
+                              </>
+                            ) : (
+                              'Confirmar Desativação'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDisable2FA(false);
+                              setDisable2FAReason('');
+                            }}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-black font-bold border-2 border-black transition"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                        <div className="flex items-start gap-2 text-xs text-gray-600 bg-yellow-50 border border-yellow-200 p-2">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 text-yellow-600" strokeWidth={2} />
+                          <div>
+                            <p className="font-bold text-yellow-800 mb-1">O usuário será notificado por email.</p>
+                            <p>
+                              Esta ação remove a autenticação de dois fatores e todos os códigos de backup do usuário. O motivo será registrado no log de auditoria.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth';
 import { api } from '@/lib/api';
@@ -13,6 +13,8 @@ import {
   Loader2,
   X,
   AlertCircle,
+  Copy,
+  FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
@@ -29,8 +31,12 @@ interface Session {
 export function PrivacyTab() {
   const { user } = useAuthStore();
   const [showQRCode, setShowQRCode] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrCodeImage, setQrCodeImage] = useState('');
+  const [manualSecret, setManualSecret] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [canCloseBackupCodes, setCanCloseBackupCodes] = useState(false);
 
   // Fetch active sessions
   const { data: sessionsData, refetch: refetchSessions } = useQuery({
@@ -46,7 +52,8 @@ export function PrivacyTab() {
     mutationFn: (password: string) =>
       api.post('/settings/2fa/enable', { password }),
     onSuccess: (response) => {
-      setQrCodeUrl(response.data.qrCode);
+      setQrCodeImage(response.data.qrCodeImage);
+      setManualSecret(response.data.secret);
       setShowQRCode(true);
       toast.success('Escaneie o QR Code com seu aplicativo autenticador');
     },
@@ -59,17 +66,72 @@ export function PrivacyTab() {
   const { mutate: verify2FA, isPending: isVerifying2FA } = useMutation({
     mutationFn: (token: string) =>
       api.post('/settings/2fa/verify', { token }),
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success('2FA ativado com sucesso!');
       setShowQRCode(false);
       setVerificationCode('');
-      // Refresh user data
-      window.location.reload();
+      // Show backup codes modal
+      if (response.data.backupCodes) {
+        setBackupCodes(response.data.backupCodes);
+        setShowBackupCodes(true);
+        setCanCloseBackupCodes(false);
+      } else {
+        window.location.reload();
+      }
     },
     onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Token inválido');
     },
   });
+
+  // 5-second timer for backup codes modal
+  useEffect(() => {
+    if (showBackupCodes && !canCloseBackupCodes) {
+      const timer = setTimeout(() => {
+        setCanCloseBackupCodes(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showBackupCodes, canCloseBackupCodes]);
+
+  // Copy all backup codes to clipboard
+  const handleCopyBackupCodes = () => {
+    const codesText = backupCodes.join('\n');
+    navigator.clipboard.writeText(codesText);
+    toast.success('Todos os códigos copiados para a área de transferência');
+  };
+
+  // Download backup codes as .txt file
+  const handleDownloadBackupCodes = () => {
+    const codesText = `THUMDRA - CÓDIGOS DE BACKUP 2FA
+================================
+Guarde estes códigos em local seguro.
+Cada código funciona apenas uma vez.
+================================
+
+${backupCodes.join('\n')}
+
+================================
+Gerado em: ${new Date().toLocaleString('pt-BR')}
+`;
+    const blob = new Blob([codesText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'thumdra-backup-codes.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Arquivo baixado');
+  };
+
+  // Close backup codes modal and reload
+  const handleCloseBackupCodes = () => {
+    setShowBackupCodes(false);
+    setBackupCodes([]);
+    window.location.reload();
+  };
 
   // Disable 2FA mutation
   const { mutate: disable2FA, isPending: isDisabling2FA } = useMutation({
@@ -194,18 +256,24 @@ export function PrivacyTab() {
                 <p className="text-sm text-gray-600 mb-4">
                   1. Escaneie o QR Code com seu aplicativo autenticador
                 </p>
-                <div className="bg-white p-4 border-2 border-black">
-                  {qrCodeUrl && (
+                <div className="bg-white p-4 border-2 border-black flex justify-center">
+                  {qrCodeImage && (
                     <Image
-                      src={qrCodeUrl}
+                      src={qrCodeImage}
                       alt="QR Code"
                       width={200}
                       height={200}
-                      className="w-full h-auto"
+                      className="w-48 h-48"
                       unoptimized
                     />
                   )}
                 </div>
+                {manualSecret && (
+                  <div className="mt-3 p-2 bg-gray-100 border-2 border-gray-300">
+                    <p className="text-xs text-gray-500 mb-1">Ou digite manualmente:</p>
+                    <code className="text-sm font-mono break-all">{manualSecret}</code>
+                  </div>
+                )}
               </div>
 
               <div className="mb-4">
@@ -231,6 +299,70 @@ export function PrivacyTab() {
               >
                 {isVerifying2FA && <Loader2 className="w-4 h-4 animate-spin" />}
                 Verificar e Ativar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Backup Codes Modal */}
+        {showBackupCodes && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white border-4 border-black p-8 max-w-lg mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-8 h-8 text-[#00ff88]" />
+                <h3 className="text-xl font-bold">Códigos de Backup</h3>
+              </div>
+
+              <div className="bg-yellow-50 border-2 border-yellow-400 p-4 mb-4">
+                <p className="text-sm text-yellow-800 font-bold">
+                  Guarde estes códigos em local seguro!
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Cada código funciona apenas uma vez. Use-os caso perca acesso ao seu aplicativo autenticador.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-4 p-4 bg-gray-50 border-2 border-black">
+                {backupCodes.map((code, index) => (
+                  <div
+                    key={index}
+                    className="font-mono text-sm bg-white px-3 py-2 border border-gray-300 text-center"
+                  >
+                    {code}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={handleCopyBackupCodes}
+                  className="flex-1 px-4 py-2 border-2 border-black hover:bg-gray-50 transition flex items-center justify-center gap-2 font-bold text-sm"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copiar todos
+                </button>
+                <button
+                  onClick={handleDownloadBackupCodes}
+                  className="flex-1 px-4 py-2 border-2 border-black hover:bg-gray-50 transition flex items-center justify-center gap-2 font-bold text-sm"
+                >
+                  <FileDown className="w-4 h-4" />
+                  Baixar .txt
+                </button>
+              </div>
+
+              <button
+                onClick={handleCloseBackupCodes}
+                disabled={!canCloseBackupCodes}
+                className="w-full px-4 py-3 bg-[#00ff88] border-2 border-black hover:bg-[#00ff88]/90 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 font-bold"
+              >
+                {!canCloseBackupCodes ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Aguarde...
+                  </>
+                ) : (
+                  'Concluir'
+                )}
               </button>
             </div>
           </div>
