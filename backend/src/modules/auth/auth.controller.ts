@@ -71,11 +71,8 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
       organizationId: user.organizationId,
     });
 
-    // Remove twoFactorEnabled from response
-    const { twoFactorEnabled, ...userWithout2FA } = user;
-
     return reply.send({
-      user: userWithout2FA,
+      user,
       token,
     });
   } catch (error: any) {

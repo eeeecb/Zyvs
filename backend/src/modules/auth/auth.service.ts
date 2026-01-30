@@ -168,6 +168,7 @@ export class AuthService {
       plan: user.plan,
       organizationId: user.organizationId,
       organization: user.organization,
+      twoFactorEnabled: user.twoFactorEnabled,
     };
   }
 
@@ -181,6 +182,7 @@ export class AuthService {
         avatar: true,
         role: true,
         plan: true,
+        twoFactorEnabled: true,
         organizationId: true,
         organization: {
           select: {
