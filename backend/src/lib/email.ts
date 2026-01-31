@@ -6,7 +6,7 @@ const resend = process.env.RESEND_API_KEY
 
 // Usar domínio de teste do Resend até verificar domínio próprio
 // https://resend.com/docs/dashboard/domains/introduction
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Thumdra <onboarding@resend.dev>';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Thumdra <onboarding@resend.dev>'; //Mudar para email próprio quando verificado
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 interface SendEmailResult {
