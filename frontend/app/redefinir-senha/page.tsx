@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -18,9 +18,9 @@ const resetPasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
-type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -41,13 +41,13 @@ export default function ResetPasswordPage() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<ResetPasswordForm>({
+  } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
   });
 
   const password = watch('password', '');
 
-  const onSubmit = async (data: ResetPasswordForm) => {
+  const onSubmit = async (data: ResetPasswordFormData) => {
     if (!token) return;
 
     try {
@@ -339,5 +339,24 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ResetPasswordFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="flex items-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin" />
+        <span className="font-bold uppercase text-sm">Carregando...</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
