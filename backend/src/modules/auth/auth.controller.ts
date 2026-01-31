@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
-import { registerSchema, loginSchema, verify2FALoginSchema } from './auth.schema';
+import { registerSchema, loginSchema, verify2FALoginSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schema';
 import { BillingService } from '../billing/billing.service';
 
 const authService = new AuthService();
@@ -147,5 +147,49 @@ export async function me(req: FastifyRequest, reply: FastifyReply) {
     return reply.send({ user });
   } catch (error: any) {
     return reply.status(500).send({ error: error.message });
+  }
+}
+
+export async function forgotPassword(req: FastifyRequest, reply: FastifyReply) {
+  try {
+    const data = forgotPasswordSchema.parse(req.body);
+    const result = await authService.forgotPassword(data);
+
+    return reply.send(result);
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return reply.status(400).send({
+        error: 'Dados inválidos',
+        details: error.errors,
+      });
+    }
+    // Rate limit error
+    if (error.message.includes('Muitas tentativas')) {
+      return reply.status(429).send({
+        error: error.message,
+      });
+    }
+    return reply.status(400).send({
+      error: error.message,
+    });
+  }
+}
+
+export async function resetPassword(req: FastifyRequest, reply: FastifyReply) {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+    const result = await authService.resetPassword(data);
+
+    return reply.send(result);
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return reply.status(400).send({
+        error: 'Dados inválidos',
+        details: error.errors,
+      });
+    }
+    return reply.status(400).send({
+      error: error.message,
+    });
   }
 }

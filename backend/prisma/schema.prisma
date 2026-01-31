@@ -93,11 +93,30 @@ model User {
   // Relações de configurações
   sessions              Session[]
   dataExportRequests    DataExportRequest[]
+  passwordResetTokens   PasswordResetToken[]
 
   @@index([email])
   @@index([role])
   @@index([organizationId])
   @@map("users")
+}
+
+// =====================================================
+// PASSWORD RESET TOKENS
+// =====================================================
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique  // SHA-256 hash do token original
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // =====================================================

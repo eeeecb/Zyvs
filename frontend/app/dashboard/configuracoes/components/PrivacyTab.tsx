@@ -29,7 +29,7 @@ interface Session {
 }
 
 export function PrivacyTab() {
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState('');
   const [manualSecret, setManualSecret] = useState('');
@@ -70,13 +70,15 @@ export function PrivacyTab() {
       toast.success('2FA ativado com sucesso!');
       setShowQRCode(false);
       setVerificationCode('');
+      // Update user state with server response
+      if (response.data.user) {
+        updateUser(response.data.user);
+      }
       // Show backup codes modal
       if (response.data.backupCodes) {
         setBackupCodes(response.data.backupCodes);
         setShowBackupCodes(true);
         setCanCloseBackupCodes(false);
-      } else {
-        window.location.reload();
       }
     },
     onError: (error: AxiosError<{ message?: string }>) => {
@@ -126,20 +128,22 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}
     toast.success('Arquivo baixado');
   };
 
-  // Close backup codes modal and reload
+  // Close backup codes modal
   const handleCloseBackupCodes = () => {
     setShowBackupCodes(false);
     setBackupCodes([]);
-    window.location.reload();
   };
 
   // Disable 2FA mutation
   const { mutate: disable2FA, isPending: isDisabling2FA } = useMutation({
     mutationFn: ({ password, token }: { password: string; token: string }) =>
       api.post('/api/settings/2fa/disable', { password, token }),
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success('2FA desativado com sucesso');
-      window.location.reload();
+      // Update user state with server response
+      if (response.data.user) {
+        updateUser(response.data.user);
+      }
     },
     onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message || 'Erro ao desativar 2FA');

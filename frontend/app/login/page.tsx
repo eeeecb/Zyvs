@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,20 +9,34 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { ArrowLeft, Sparkles, MessageSquare, Users, Zap, Shield, Loader2, KeyRound } from 'lucide-react';
+import { ArrowLeft, Sparkles, MessageSquare, Users, Zap, Shield, Loader2, KeyRound, CheckCircle } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showResetSuccess, setShowResetSuccess] = useState(false);
+
+  // Check for reset success param
+  useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setShowResetSuccess(true);
+      // Clear the URL param without reload
+      window.history.replaceState({}, '', '/login');
+      // Auto-hide after 5 seconds
+      const timer = setTimeout(() => setShowResetSuccess(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   // 2FA state
   const [show2FAOverlay, setShow2FAOverlay] = useState(false);
@@ -88,11 +102,11 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
       setIsLoading(true);
@@ -254,6 +268,17 @@ export default function LoginPage() {
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
           >
+            {showResetSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#00ff88] text-black p-4 brutal-border brutal-shadow-sm text-sm font-bold uppercase flex items-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" strokeWidth={2.5} />
+                Senha alterada com sucesso! Faça login.
+              </motion.div>
+            )}
+
             {error && (
               <div className="bg-[#ff3366] text-white p-4 brutal-border brutal-shadow-sm text-sm font-bold uppercase">
                 {error}
@@ -296,9 +321,9 @@ export default function LoginPage() {
 
             {/* Forgot password */}
             <div className="text-right">
-              <a href="#" className="text-sm font-bold uppercase hover:underline transition">
+              <Link href="/esqueci-senha" className="text-sm font-bold uppercase hover:underline transition">
                 Esqueceu sua senha?
-              </a>
+              </Link>
             </div>
 
             {/* Submit button */}
@@ -431,5 +456,24 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function LoginFormFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="flex items-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin" />
+        <span className="font-bold uppercase text-sm">Carregando...</span>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFormFallback />}>
+      <LoginForm />
+    </Suspense>
   );
 }
