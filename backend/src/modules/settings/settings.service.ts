@@ -207,18 +207,18 @@ export class SettingsService {
   }
 
   async verify2FA(userId: string, token: string) {
-    const user = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { twoFactorSecret: true },
     });
 
-    if (!user || !user.twoFactorSecret) {
+    if (!existingUser || !existingUser.twoFactorSecret) {
       throw new Error('2FA não configurado');
     }
 
     // Verify token
     const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
+      secret: existingUser.twoFactorSecret,
       encoding: 'base32',
       token,
       window: 2, // Allow 2 time steps before/after
@@ -228,10 +228,39 @@ export class SettingsService {
       throw new Error('Token inválido');
     }
 
-    // Enable 2FA
-    await prisma.user.update({
+    // Enable 2FA and return updated user
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { twoFactorEnabled: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        plan: true,
+        locale: true,
+        timezone: true,
+        dateFormat: true,
+        phone: true,
+        emailNotifications: true,
+        whatsappNotifications: true,
+        twoFactorEnabled: true,
+        organizationId: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            plan: true,
+            maxContacts: true,
+            maxFlows: true,
+            maxMessagesPerMonth: true,
+            currentContacts: true,
+            currentFlows: true,
+            messagesThisMonth: true,
+          },
+        },
+      },
     });
 
     // Generate backup codes
@@ -241,6 +270,7 @@ export class SettingsService {
       success: true,
       message: '2FA ativado com sucesso',
       backupCodes,
+      user,
     };
   }
 
@@ -285,18 +315,47 @@ export class SettingsService {
     }
 
     // Disable 2FA, remove secret, and delete backup codes
-    await prisma.$transaction([
+    const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
         data: {
           twoFactorEnabled: false,
           twoFactorSecret: null,
         },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          plan: true,
+          locale: true,
+          timezone: true,
+          dateFormat: true,
+          phone: true,
+          emailNotifications: true,
+          whatsappNotifications: true,
+          twoFactorEnabled: true,
+          organizationId: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              plan: true,
+              maxContacts: true,
+              maxFlows: true,
+              maxMessagesPerMonth: true,
+              currentContacts: true,
+              currentFlows: true,
+              messagesThisMonth: true,
+            },
+          },
+        },
       }),
       prisma.backupCode.deleteMany({ where: { userId } }),
     ]);
 
-    return { success: true, message: '2FA desativado com sucesso' };
+    return { success: true, message: '2FA desativado com sucesso', user: updatedUser };
   }
 
   // =====================================================
