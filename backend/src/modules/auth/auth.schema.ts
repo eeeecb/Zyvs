@@ -19,6 +19,17 @@ export const verify2FALoginSchema = z.object({
   isBackupCode: z.boolean().optional().default(false),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token é obrigatório'),
+  password: passwordSchema,
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type Verify2FALoginInput = z.infer<typeof verify2FALoginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
